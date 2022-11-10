@@ -2,8 +2,8 @@ name: Docker image build and push
 
 on:
   push:
-    branches:
-      - 'master'
+    tags:
+    - '**'
 
 jobs:
   builder_agent:
