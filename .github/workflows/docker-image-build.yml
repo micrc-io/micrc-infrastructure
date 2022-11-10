@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - 'master'
-    tags:
-      - '*‘
 
 jobs:
   builder_agent:
