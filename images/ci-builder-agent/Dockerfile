@@ -1,4 +1,4 @@
-FROM almalinux:8.6
+FROM --platform=linux/amd64 almalinux:8.6
 
 # jdk-corretto 11
 ARG version=11.0.17.8-1
@@ -23,9 +23,9 @@ ENV JAVA_HOME=/usr/lib/jvm/java-11-amazon-corretto
 
 
 # gradle 7.5.1
-CMD ["gradle"]
+# CMD ["gradle"]
 
-ENV GRADLE_HOME /opt/gradle
+ENV GRADLE_HOME=/opt/gradle
 
 RUN set -o errexit -o nounset \
     && echo "Adding gradle user and group" \
@@ -44,24 +44,24 @@ WORKDIR /home/gradle
 RUN set -o errexit -o nounset \
     && yum update -y \
     && yum install -y \
-        unzip \
         wget \
-        \
-        bzr \
+        unzip \
+#        \
+#        bzr \
         git \
-        git-lfs \
-        mercurial \
-        openssh-client \
-        subversion \
-    \
-    && echo "Testing VCSes" \
-    && which bzr \
-    && which git \
-    && which git-lfs \
-    && which hg \
-    && which svn
+        git-lfs
+#        mercurial \
+#        openssh-client \
+#        subversion \
+#    \
+#    && echo "Testing VCSes" \
+#    && which bzr \
+#    && which git \
+#    && which git-lfs \
+#    && which hg \
+#    && which svn
 
-ENV GRADLE_VERSION 7.5.1
+ENV GRADLE_VERSION=7.5.1
 
 ARG GRADLE_DOWNLOAD_SHA256=f6b8596b10cce501591e92f229816aa4046424f3b24d771751b06779d58c8ec4
 
@@ -83,13 +83,61 @@ RUN set -o errexit -o nounset \
 
 
 # nodejs 16.15.1 npm 8.13.1
+WORKDIR /root
 
+ENV NODEJS_HOME=/opt/nodejs
+
+ENV NODEJS_VERSION=v16.15.1
+
+RUN set -o errexit -o nounset \
+    && echo "Downloading NodeJS" \
+    && wget --no-verbose --output-document=nodejs.tar.xz "https://nodejs.org/dist/${NODEJS_VERSION}/node-${NODEJS_VERSION}-linux-x64.tar.xz" \
+    \
+    && echo "Install NodeJS" \
+    && tar xf nodejs.tar.xz \
+    && rm nodejs.tar.xz \
+    && mv "node-${NODEJS_VERSION}-linux-x64" "${NODEJS_HOME}/" \
+    && ln --symbolic "${NODEJS_HOME}/bin/node" /usr/bin/node \
+    && ln --symbolic "${NODEJS_HOME}/bin/npm" /usr/bin/npm \
+    && npm install --location=global npm@8.13.1 \
+    \
+    && echo "Testing NodeJS installation" \
+    && node -v && npm -v
+ENV PATH=$PATH:${NODEJS_HOME}/bin
 
 
 # bit 0.0.772
+USER root
+ENV BVM_VERSION=0.2.1
+ENV BIT_VERSION=0.0.772
+ENV PATH=$PATH:/root/bin
+ENV NODE_OPTIONS=--max_old_space_size=4096
 
+RUN set -o errexit -o nounset \
+    && echo "Install bvm" \
+    && npm install --location=global @teambit/bvm@${BVM_VERSION} \
+    \
+    && echo "Install bit" \
+    && bvm install ${BIT_VERSION} \
+    \
+    && echo "Testing installation" \
+    && bvm version && bit -v
+
+RUN set -o errexit -o nounset \
+    && echo "Configure bit" \
+    && bit config set analytics_reporting false \
+    && bit config set no_warnings false \
+    && bit config set interactive false \
+    && bit config set error_reporting true
 
 
 # skaffold 2
-
-    
+RUN set -o errexit -o nounset \
+    && echo "Downloading Skaffold" \
+    && wget --no-verbose --output-document=skaffold "https://storage.googleapis.com/skaffold/releases/latest/skaffold-linux-amd64" \
+    \
+    && echo "Install Skaffold" \
+    && install skaffold /usr/bin/ \
+    \
+    && echo "Testing Skaffold installation" \
+    && skaffold version
