@@ -61,6 +61,13 @@ RUN set -o errexit -o nounset \
 #    && which hg \
 #    && which svn
 
+RUN set -o errexit -o nounset \
+    && echo "install docker" \
+    && dnf install -y yum-utils \
+    && dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo \
+    && dnf -y install docker-ce docker-ce-cli containerd.io
+
+
 ENV GRADLE_VERSION=7.5.1
 
 ARG GRADLE_DOWNLOAD_SHA256=f6b8596b10cce501591e92f229816aa4046424f3b24d771751b06779d58c8ec4
