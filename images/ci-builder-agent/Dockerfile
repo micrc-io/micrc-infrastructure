@@ -112,7 +112,6 @@ RUN set -o errexit -o nounset \
     && node -v && npm -v
 ENV PATH=$PATH:${NODEJS_HOME}/bin
 
-
 # bit 0.0.772
 USER root
 ENV BVM_VERSION=0.2.1
@@ -148,3 +147,13 @@ RUN set -o errexit -o nounset \
     \
     && echo "Testing Skaffold installation" \
     && skaffold version
+
+# kustomize
+RUN set -o errexit -o nounset \
+    && echo "Downloading kustomize" \
+    && wget --no-verbose --output-document=kustomize.tar.gz "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv4.5.7/kustomize_v4.5.7_linux_arm64.tar.gz" \
+    && tar -zxvf kustomize.tar.gz \
+    && echo "Install kustomize" \
+    && install kustomize /usr/bin/
+
+
