@@ -151,7 +151,7 @@ RUN set -o errexit -o nounset \
 # kustomize
 RUN set -o errexit -o nounset \
     && echo "Downloading kustomize" \
-    && wget --no-verbose --output-document=kustomize.tar.gz "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv4.5.7/kustomize_v4.5.7_linux_arm64.tar.gz" \
+    && wget --no-verbose --output-document=kustomize.tar.gz "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv4.5.7/kustomize_v4.5.7_linux_amd64.tar.gz" \
     && tar -zxvf kustomize.tar.gz \
     && echo "Install kustomize" \
     && install kustomize /usr/bin/
