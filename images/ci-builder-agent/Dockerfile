@@ -45,6 +45,7 @@ RUN set -o errexit -o nounset \
     && yum update -y \
     && yum install -y \
         wget \
+        vim \
         unzip \
 #        \
 #        bzr \
@@ -61,11 +62,13 @@ RUN set -o errexit -o nounset \
 #    && which hg \
 #    && which svn
 
-RUN set -o errexit -o nounset \
-    && echo "install docker" \
-    && dnf install -y yum-utils \
-    && dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo \
-    && dnf -y install docker-ce docker-ce-cli containerd.io
+
+# 如使用挂载宿主机Docker方案,则无需安装docker
+#RUN set -o errexit -o nounset \
+#    && echo "install docker" \
+#    && dnf install -y yum-utils \
+#    && dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo \
+#    && dnf -y install docker-ce docker-ce-cli containerd.io
 
 
 ENV GRADLE_VERSION=7.5.1
@@ -149,11 +152,11 @@ RUN set -o errexit -o nounset \
     && skaffold version
 
 # kustomize
+ENV KUSTOMIZE_VERSION=v4.5.7
 RUN set -o errexit -o nounset \
     && echo "Downloading kustomize" \
-    && wget --no-verbose --output-document=kustomize.tar.gz "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv4.5.7/kustomize_v4.5.7_linux_amd64.tar.gz" \
+    && wget --no-verbose --output-document=kustomize.tar.gz "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${NODEJS_VERSION}/kustomize_${NODEJS_VERSION}_linux_amd64.tar.gz" \
     && tar -zxvf kustomize.tar.gz \
     && echo "Install kustomize" \
-    && install kustomize /usr/bin/
-
+    && install kustomize /usr/bin/ \
 
