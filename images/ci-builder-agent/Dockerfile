@@ -155,7 +155,7 @@ RUN set -o errexit -o nounset \
 ENV KUSTOMIZE_VERSION=v4.5.7
 RUN set -o errexit -o nounset \
     && echo "Downloading kustomize" \
-    && wget --no-verbose --output-document=kustomize.tar.gz "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${NODEJS_VERSION}/kustomize_${NODEJS_VERSION}_linux_amd64.tar.gz" \
+    && wget --no-verbose --output-document=kustomize.tar.gz "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" \
     && tar -zxvf kustomize.tar.gz \
     && echo "Install kustomize" \
     && install kustomize /usr/bin/ \
