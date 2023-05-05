@@ -97,7 +97,7 @@ WORKDIR /root
 
 ENV NODEJS_HOME=/opt/nodejs
 
-ENV NODEJS_VERSION=v16.15.1
+ENV NODEJS_VERSION=v18.14.2
 
 RUN set -o errexit -o nounset \
     && echo "Downloading NodeJS" \
@@ -109,7 +109,7 @@ RUN set -o errexit -o nounset \
     && mv "node-${NODEJS_VERSION}-linux-x64" "${NODEJS_HOME}/" \
     && ln --symbolic "${NODEJS_HOME}/bin/node" /usr/bin/node \
     && ln --symbolic "${NODEJS_HOME}/bin/npm" /usr/bin/npm \
-    && npm install --location=global npm@8.13.1 \
+    && npm install --location=global npm@9.5.0 \
     \
     && echo "Testing NodeJS installation" \
     && node -v && npm -v
@@ -117,8 +117,8 @@ ENV PATH=$PATH:${NODEJS_HOME}/bin
 
 # bit 0.0.772
 USER root
-ENV BVM_VERSION=0.2.1
-ENV BIT_VERSION=0.0.772
+ENV BVM_VERSION=0.3.1
+ENV BIT_VERSION=0.0.1000
 ENV PATH=$PATH:/root/bin
 ENV NODE_OPTIONS=--max_old_space_size=4096
 
