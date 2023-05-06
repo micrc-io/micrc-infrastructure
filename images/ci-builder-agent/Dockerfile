@@ -91,6 +91,18 @@ RUN set -o errexit -o nounset \
     && echo "Testing Gradle installation" \
     && gradle --version
 
+ENV MAVEN_HOME /usr/share/maven
+
+COPY --from=maven:3.9.1-eclipse-temurin-11 ${MAVEN_HOME} ${MAVEN_HOME}
+COPY --from=maven:3.9.1-eclipse-temurin-11 /usr/local/bin/mvn-entrypoint.sh /usr/local/bin/mvn-entrypoint.sh
+COPY --from=maven:3.9.1-eclipse-temurin-11 /usr/share/maven/ref/settings-docker.xml /usr/share/maven/ref/settings-docker.xml
+
+RUN ln -s ${MAVEN_HOME}/bin/mvn /usr/bin/mvn
+
+ARG MAVEN_VERSION=3.9.1
+ARG USER_HOME_DIR="/root"
+ENV MAVEN_CONFIG "$USER_HOME_DIR/.m2"
+
 
 # nodejs 16.15.1 npm 8.13.1
 WORKDIR /root
@@ -116,28 +128,28 @@ RUN set -o errexit -o nounset \
 ENV PATH=$PATH:${NODEJS_HOME}/bin
 
 # bit 0.0.772
-USER root
-ENV BVM_VERSION=0.3.1
-ENV BIT_VERSION=0.0.1000
-ENV PATH=$PATH:/root/bin
-ENV NODE_OPTIONS=--max_old_space_size=4096
+# USER root
+# ENV BVM_VERSION=0.3.1
+# ENV BIT_VERSION=0.0.1000
+# ENV PATH=$PATH:/root/bin
+# ENV NODE_OPTIONS=--max_old_space_size=4096
 
-RUN set -o errexit -o nounset \
-    && echo "Install bvm" \
-    && npm install --location=global @teambit/bvm@${BVM_VERSION} \
-    \
-    && echo "Install bit" \
-    && bvm install ${BIT_VERSION} \
-    \
-    && echo "Testing installation" \
-    && bvm version && bit -v
+# RUN set -o errexit -o nounset \
+#     && echo "Install bvm" \
+#     && npm install --location=global @teambit/bvm@${BVM_VERSION} \
+#     \
+#     && echo "Install bit" \
+#     && bvm install ${BIT_VERSION} \
+#     \
+#     && echo "Testing installation" \
+#     && bvm version && bit -v
 
-RUN set -o errexit -o nounset \
-    && echo "Configure bit" \
-    && bit config set analytics_reporting false \
-    && bit config set no_warnings false \
-    && bit config set interactive false \
-    && bit config set error_reporting true
+# RUN set -o errexit -o nounset \
+#     && echo "Configure bit" \
+#     && bit config set analytics_reporting false \
+#     && bit config set no_warnings false \
+#     && bit config set interactive false \
+#     && bit config set error_reporting true
 
 
 # skaffold 2
