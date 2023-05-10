@@ -104,7 +104,7 @@ ARG USER_HOME_DIR="/root"
 ENV MAVEN_CONFIG "$USER_HOME_DIR/.m2"
 
 
-# nodejs 16.15.1 npm 8.13.1
+# nodejs 18.14.2 npm 9.5.0
 WORKDIR /root
 
 ENV NODEJS_HOME=/opt/nodejs
@@ -127,7 +127,7 @@ RUN set -o errexit -o nounset \
     && node -v && npm -v
 ENV PATH=$PATH:${NODEJS_HOME}/bin
 
-# bit 0.0.772
+# bit 0.0.1000
 # USER root
 # ENV BVM_VERSION=0.3.1
 # ENV BIT_VERSION=0.0.1000
