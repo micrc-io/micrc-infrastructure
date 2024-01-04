@@ -1,0 +1,14 @@
+REPO_PROXY			https://repo.it.组织域.com
+TIMEZONE			Asia/Shanghai
+ORG_DOMAIN 			组织域
+ORG_DOMAIN_NAME		组织域.com
+ROUTER_ADDRESS		10.0.0.1
+STORAGE_ADDRESS		10.0.5.10 longhorn cas存储控制器ui控制台ip
+STORAGE_ADMIN		admin 存储控制器ui控制台用户名
+STORAGE_PASS		P@88w0rd 存储控制器ui控制台密码
+KS_CONSOLE_ADDRESS	10.0.5.1  kubesphere ui控制台ip
+DNS01_KEY			acme dns01验证需要的域名供应商accesskey
+DNS01_SECRET		域名供应商keysecret
+NET_HTTP_PROXY		代理地址http://xxx:1080
+NET_SOCK_PROXY		sock代理socks5://xxx:1081
+IGNORE_PROXY		127.0.0.0/8,localhost,本地局域网段,kubernetes Pod/Service CIDR网段,内网中使用的域名

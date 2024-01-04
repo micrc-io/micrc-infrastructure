@@ -1,0 +1,16 @@
+{
+  "attributes": {
+  	"npm": {
+  	},
+  	"proxy": {
+  	  "remoteUrl": "https://registry.npm.taobao.org"
+  	},
+  	"storage":{
+  	  "blobStoreName": "npm",
+  	  "strictContentTypeValidation": false,
+  	}
+  },
+  "name": "npm-taobao-proxy",
+  "online": true,
+  "type": "npm-proxy"
+}

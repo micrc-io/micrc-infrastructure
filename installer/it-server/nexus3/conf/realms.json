@@ -1,0 +1,6 @@
+[
+  "NexusAuthenticatingRealm",
+  "NexusAuthorizingRealm",
+  "DockerToken",
+  "NpmToken"
+]

@@ -1,0 +1,21 @@
+{
+  "attributes": {
+  	"docker": {
+      "forceBasicAuth": false,
+      "v1Enabled": true
+  	},
+  	"proxy": {
+  	  "remoteUrl": "https://registry-1.docker.io"
+  	},
+    "dockerProxy": {
+      "indexType": "HUB"
+    },
+  	"storage":{
+  	  "blobStoreName": "docker",
+  	  "strictContentTypeValidation": false,
+  	}
+  },
+  "name": "docker-registry-proxy",
+  "online": true,
+  "type": "docker-proxy"
+}

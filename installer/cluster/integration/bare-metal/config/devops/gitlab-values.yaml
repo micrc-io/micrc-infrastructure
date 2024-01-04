@@ -1,0 +1,123 @@
+extraEnvFrom:
+  http_proxy:
+    configMapKeyRef:
+      name: proxy-config
+      key: http_proxy
+  https_proxy:
+    configMapKeyRef:
+      name: proxy-config
+      key: https_proxy
+  all_proxy:
+    configMapKeyRef:
+      name: proxy-config
+      key: all_proxy
+  no_proxy:
+    configMapKeyRef:
+      name: proxy-config
+      key: no_proxy
+
+global:
+  edition: ce
+  communityImages:
+    migrations:
+      repository: gitlab-org/build/cng/gitlab-toolbox-ce
+    sidekiq:
+      repository: gitlab-org/build/cng/gitlab-sidekiq-ce
+    toolbox:
+      repository: gitlab-org/build/cng/gitlab-toolbox-ce
+    webservice:
+      repository: gitlab-org/build/cng/gitlab-webservice-ce
+    workhorse:
+      repository: gitlab-org/build/cng/gitlab-workhorse-ce
+  hosts:
+    domain: it.ouxxa.com
+    externalIP: 10.0.5.10
+  ingress:
+    configureCertmanager: false
+    annotations:
+      "cert-manager.io/issuer": letsencrypt
+  appConfig:
+    initialDefaults:
+      signupEnabled: false
+  registry: {}
+  pages: {}
+  certificates:
+    image:
+      repository: gitlab-org/build/cng/alpine-certificates
+  kubectl:
+    image:
+      repository: gitlab-org/build/cng/kubectl
+  busybox:
+    image:
+      repository: gitlab-org/cloud-native/mirror/images/busybox
+
+nginx-ingress:
+  controller:
+    image:
+      repository: gitlab-org/cloud-native/mirror/images/ingress-nginx/controller
+    service:
+      annotations:
+        lb.kubesphere.io/v1alpha1: openelb
+        protocol.openelb.kubesphere.io/v1alpha1: layer2
+        eip.openelb.kubesphere.io/v1alpha2: ouxxa-dev-eip
+      loadBalancerIP: "10.0.5.10"
+  defaultBackend:
+    image:
+      repository: gitlab-org/cloud-native/mirror/images/defaultbackend-amd64
+
+gitlab:
+  geo-logcursor:
+    image:
+      repository: gitlab-org/build/cng/gitlab-geo-logcursor
+  gitaly:
+    image:
+      repository: gitlab-org/build/cng/gitaly
+  gitlab-exporter:
+    image:
+      repository: gitlab-org/build/cng/gitlab-exporter
+  gitlab-pages:
+    image:
+      repository: gitlab-org/build/cng/gitlab-pages
+  gitlab-shell:
+    image:
+      repository: gitlab-org/build/cng/gitlab-shell
+  kas:
+    image:
+      repository: gitlab-org/build/cng/gitlab-kas
+    ingress:
+      tls:
+        secretName: kas-tls
+  mailroom:
+    image:
+      repository: gitlab-org/build/cng/gitlab-mailroom
+  praefect:
+    image:
+      repository: gitlab-org/build/cng/gitaly
+  spamcheck:
+    image:
+      repository: gitlab-com/gl-security/engineering-and-research/automation-team/spam/spamcheck
+  webservice:
+    ingress:
+      tls:
+        secretName: gitlab-tls
+
+registry:
+  ingress:
+    tls:
+      secretName: registry-tls
+
+minio:
+  ingress:
+    tls:
+      secretName: minio-tls
+
+gitlab-runner:
+  install: false
+
+certmanager:
+  install: false
+
+shared-secrets:
+  selfsign:
+    image:
+      repository: gitlab-org/build/cng/cfssl-self-sign

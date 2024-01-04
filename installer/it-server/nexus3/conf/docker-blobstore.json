@@ -1,0 +1,5 @@
+{
+  "name":"docker",
+  "path":"/nexus-data/blobs/docker",
+  "type":"file"
+}

@@ -1,0 +1,18 @@
+{
+  "attributes": {
+  	"maven": {
+  	  "versionPolicy": "MIXED",
+  	  "layoutPolicy": "PERMISSIVE"
+  	},
+  	"group": {
+  	  "memberNames": ["maven-aliyun-proxy"]
+  	},
+  	"storage":{
+  	  "blobStoreName": "maven",
+  	  "strictContentTypeValidation": false,
+  	}
+  },
+  "name": "maven-hub",
+  "online": true,
+  "type": "maven-group"
+}

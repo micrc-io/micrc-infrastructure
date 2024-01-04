@@ -1,0 +1,195 @@
+#!/bin/bash
+
+
+echo "#######################################"
+echo "## Start -- 开始准备环境"
+echo "#######################################"
+
+# 设置环境变量
+REPO_PROXY=`cat ./owner.config | awk '{if($1 == "REPO_PROXY") print $2}'`
+TIMEZONE=`cat ./owner.config | awk '{if($1 == "TIMEZONE") print $2}'`
+
+
+echo "==========关闭防火墙和selinux=========="
+systemctl stop firewalld && systemctl disable firewalld
+setenforce 0
+sed -i '7s/enforcing/disabled/' /etc/selinux/config
+echo "================Done.=================="
+
+
+# 关闭swap分区
+echo "===========关闭swap分区================"
+swapoff -a
+sed -i '/^\/dev\/mapper\/centos-swap/c#/dev/mapper/centos-swap swap                    swap    defaults        0 0' /etc/fstab
+cat /etc/fstab
+free -m
+
+echo 'vm.swappiness = 0' >> /etc/sysctl.d/k8s.conf
+sysctl -p /etc/sysctl.d/k8s.conf
+echo "=============Done.====================="
+
+
+echo "===============更新nexus yum仓库==================="
+# 修改yum.conf取消ssl验证，避免服务器时间落后导致验证证书失败
+tee /etc/yum.conf <<-'EOF'
+[main]
+sslverify=0
+cachedir=/var/cache/yum/$basearch/$releasever
+keepcache=0
+debuglevel=2
+logfile=/var/log/yum.log
+exactarch=1
+obsoletes=1
+gpgcheck=1
+plugins=1
+installonly_limit=5
+bugtracker_url=http://bugs.centos.org/set_project.php?project_id=23&ref=http://bugs.centos.org/bug_report_page.php?category=yum
+distroverpkg=centos-release
+EOF
+
+mkdir -p /etc/yum.repos.d/bak
+mv /etc/yum.repos.d/*.repo /etc/yum.repos.d/bak
+
+tee /etc/yum.repos.d/nexus.repo <<-EOF
+[base]
+name=CentOS-\$releasever - Base
+baseurl=$REPO_PROXY/repository/yum-hub/\$releasever/os/\$basearch/
+gpgcheck=0
+
+[updates]
+name=CentOS-\$releasever - Updates
+baseurl=$REPO_PROXY/repository/yum-hub/\$releasever/updates/\$basearch/
+gpgcheck=0
+
+[extras]
+name=CentOS-\$releasever - Extras
+baseurl=$REPO_PROXY/repository/yum-hub/\$releasever/extras/\$basearch/
+gpgcheck=0
+
+[epel]
+name=CentOS-\$releasever - epel
+baseurl=$REPO_PROXY/repository/yum-hub/\$releasever/\$basearch/
+gpgcheck=0
+
+[docker-ce]
+name=Docker CE Stable - \$basearch
+baseurl=$REPO_PROXY/repository/yum-hub/\$releasever/\$basearch/stable
+gpgcheck=0
+EOF
+
+yum clean all
+yum repolist
+yum makecache
+
+yum update -y
+yum update -y
+rm -rf /etc/yum.repos.d/CentOS-*
+yum clean all
+yum repolist
+yum makecache
+echo "=======================Done.===================="
+
+
+echo "===============同步时间=================="
+yum -y install chrony
+yum -y install chrony
+sed -i.bak '3,6d' /etc/chrony.conf && sed -i '3cserver ntp1.aliyun.com iburst' /etc/chrony.conf
+systemctl start chronyd && systemctl enable chronyd
+
+chronyc sources
+timedatectl set-timezone $TIMEZONE
+date
+echo "================Done.===================="
+
+
+echo "==========加载br_netfilter模块========="
+touch /etc/sysctl.d/k8s.conf
+tee /etc/sysctl.d/k8s.conf <<-'EOF'
+net.bridge.bridge-nf-call-ip6tables = 1 > /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables = 1 >> /etc/sysctl.d/k8s.conf
+net.ipv4.ip_forward = 1 >> /etc/sysctl.d/k8s.conf
+EOF
+modprobe br_netfilter && sysctl -p /etc/sysctl.d/k8s.conf
+sysctl --system
+echo "================Done.=================="
+
+
+echo "=========安装ipvs, ipset和ipvsadm======"
+touch /etc/sysconfig/modules/ipvs.modules
+tee /etc/sysconfig/modules/ipvs.modules <<-'EOF'
+#!/bin/bash
+modprobe -- ip_vs
+modprobe -- ip_vs_rr
+modprobe -- ip_vs_wrr
+modprobe -- ip_vs_sh
+modprobe -- nf_conntrack_ipv4
+EOF
+chmod 755 /etc/sysconfig/modules/ipvs.modules
+bash /etc/sysconfig/modules/ipvs.modules && lsmod | grep -e ip_vs -e nf_conntrack_ipv4
+yum -y install ipset ipvsadm
+yum -y install ipset ipvsadm
+echo "===============Done.==================="
+
+
+echo "===========安装docker-ce============="
+yum -y install docker-ce docker-ce-cli
+yum -y install docker-ce docker-ce-cli
+
+mkdir /etc/docker
+touch /etc/docker/daemon.json
+tee /etc/docker/daemon.json <<-EOF
+{
+  "log-opts": {
+    "max-size": "5m",
+    "max-file": "3"
+  },
+  "registry-mirrors": ["$REPO_PROXY"],
+  "exec-opts": ["native.cgroupdriver=systemd"]
+}
+EOF
+
+systemctl daemon-reload
+systemctl restart docker
+
+docker info
+docker version
+echo "===============Done.=================="
+
+
+echo "======================安装iscsi,nfw client for longhorn/openebs cas存储========================="
+# 安装iscsi client, nfsv4 client
+yum --setopt=tsflags=noscripts install iscsi-initiator-utils -y
+yum --setopt=tsflags=noscripts install iscsi-initiator-utils -y
+yum install nfs-utils -y
+yum install nfs-utils -y
+echo "InitiatorName=$(/sbin/iscsi-iname)" > /etc/iscsi/initiatorname.iscsi
+systemctl enable iscsid
+systemctl start iscsid
+modprobe iscsi_tcp
+echo "=========================================Done.================================================"
+
+
+echo "======================安装依赖===================="
+yum install util-linux socat rpcbind wget jq psmisc vim \
+  yum-utils net-tools telnet openssl ebtables ipset conntrack \
+  device-mapper-persistent-data lvm2 \
+  ntpdate ipvsadm ipset sysstat conntrack libseccomp curl \
+  -y
+yum install util-linux socat rpcbind wget jq psmisc vim \
+  yum-utils net-tools telnet openssl ebtables ipset conntrack \
+  device-mapper-persistent-data lvm2 \
+  ntpdate ipvsadm ipset sysstat conntrack libseccomp curl \
+  -y
+echo "======================Done.======================"
+
+
+echo "######################################"
+echo "## Successful -- 环境准备完成."
+echo "######################################"
+
+# 重启
+echo "==============重启===================="
+sync;reboot
+
+
+

@@ -1,0 +1,316 @@
+#!/bin/bash
+
+
+echo "#######################################"
+echo "## Start -- Post install"
+echo "#######################################"
+
+
+# http代理
+NET_HTTP_PROXY=`cat ./owner.config | awk '{if($1 == "NET_HTTP_PROXY") print $2}'`
+# sock代理
+NET_SOCK_PROXY=`cat ./owner.config | awk '{if($1 == "NET_HTTP_PROXY") print $2}'`
+# 代理ignore
+IGNORE_PROXY=`cat ./owner.config | awk '{if($1 == "IGNORE_PROXY") print $2}'`
+# 组织域名称
+ORG_DOMAIN=`cat ./owner.config | awk '{if($1 == "ORG_DOMAIN") print $2}'`
+# 路由地址
+ROUTER_ADDRESS=`cat ./owner.config | awk '{if($1 == "ROUTER_ADDRESS") print $2}'`
+# ks console ip
+KS_CONSOLE_ADDRESS=`cat ./owner.config | awk '{if($1 == "KS_CONSOLE_ADDRESS") print $2}'`
+# 存储控制台地址
+STORAGE_ADDRESS=`cat ./owner.config | awk '{if($1 == "STORAGE_ADDRESS") print $2}'`
+# 存储控制台地址
+STORAGE_ADMIN=`cat ./owner.config | awk '{if($1 == "STORAGE_ADMIN") print $2}'`
+# 存储控制台地址
+STORAGE_PASS=`cat ./owner.config | awk '{if($1 == "STORAGE_PASS") print $2}'`
+
+
+echo "==========================为longhorn cas存储创建ingress========================="
+# longhorn-system存在，则创建ingress，gateway，eip
+kubectl get ns longhorn-system
+if [ $? -eq 0 ]; then
+	# 创建eip
+	cat <<EOF | kubectl apply -f -
+---
+apiVersion: network.kubesphere.io/v1alpha2
+kind: Eip
+metadata:
+  name: $ORG_DOMAIN-integration-storage-eip
+spec:
+  address: $STORAGE_ADDRESS
+  interface: can_reach:$ROUTER_ADDRESS
+  protocol: layer2
+  disable: false
+EOF
+
+	# 创建ks gateway
+	cat <<EOF | kubectl apply -f -
+---
+apiVersion: gateway.kubesphere.io/v1alpha1
+kind: Gateway
+metadata:
+  annotations:
+    kubesphere.io/annotations: OpenELB
+    kubesphere.io/creator: admin
+  name: kubesphere-router-longhorn-system
+  namespace: kubesphere-controls-system
+spec:
+  controller:
+    replicas: 1
+    scope:
+      enabled: true
+      namespace: longhorn-system
+  deployment:
+    annotations:
+      servicemesh.kubesphere.io/enabled: "false"
+    replicas: 1
+  service:
+    annotations:
+      eip.openelb.kubesphere.io/v1alpha2: $ORG_DOMAIN-integration-storage-eip
+      lb.kubesphere.io/v1alpha1: openelb
+      protocol.openelb.kubesphere.io/v1alpha1: layer2
+    type: LoadBalancer
+EOF
+
+	# basic auth secret
+	echo "${STORAGE_ADMIN}:$(openssl passwd -stdin -apr1 <<< ${STORAGE_PASS})" >> auth
+	kubectl -n longhorn-system create secret generic basic-auth --from-file=auth
+
+	# 创建ingress
+	cat <<EOF | kubectl apply -f -
+---
+kind: Ingress
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: longhorn-ingress
+  namespace: longhorn-system
+  annotations:
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/ssl-redirect: 'false'
+    nginx.ingress.kubernetes.io/auth-secret: basic-auth
+    nginx.ingress.kubernetes.io/auth-realm: 'Authentication Required '
+    nginx.ingress.kubernetes.io/proxy-body-size: 10000m
+spec:
+  tls:
+    - hosts:
+        - storage.integration.it.ouxxa.com
+      secretName: ouxxa-integration-tls
+  rules:
+    - host: storage.integration.it.ouxxa.com
+      http:
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: longhorn-frontend
+                port:
+                  number: 80
+EOF
+fi
+echo "=====================================Done.====================================="
+
+
+echo "================================修改ks-console eip=============================="
+# 配置ks console eip
+# kubectl patch -n kubesphere-system svc/ks-console --type=json \
+#   -p="[ \
+#   {\"op\": \"add\", \"path\": \"/metadata/annotations/lb.kubesphere.io~1v1alpha1\", \"value\": \"openelb\"}, \
+#   {\"op\": \"add\", \"path\": \"/metadata/annotations/protocol.openelb.kubesphere.io~1v1alpha1\", \"value\": \"layer2\"}, \
+#   {\"op\": \"add\", \"path\": \"/metadata/annotations/eip.openelb.kubesphere.io~1v1alpha2\", \"value\": \"$ORG_DOMAIN-dev-eip\"}, \
+#   {\"op\": \"add\", \"path\": \"/spec/loadBalancerIP\", \"value\": \"$KS_CONSOLE_ADDRESS\"}, \
+#   {\"op\": \"replace\", \"path\": \"/spec/type\", \"value\": \"LoadBalancer\"}
+#   ]"
+
+# bug fix ks-console不能设置为clusterip，安装后patch
+kubectl patch -n kubesphere-system svc/ks-console --type=json \
+  -p="[{\"op\": \"replace\", \"path\": \"/spec/type\", \"value\": \"ClusterIP\"}]"
+# 创建eip
+# todo 云环境直接使用slb地址，不创建eip
+cat <<EOF | kubectl apply -f -
+---
+apiVersion: network.kubesphere.io/v1alpha2
+kind: Eip
+metadata:
+  name: $ORG_DOMAIN-integration-ks-eip
+spec:
+  address: $KS_CONSOLE_ADDRESS
+  interface: can_reach:$ROUTER_ADDRESS
+  protocol: layer2
+  disable: false
+EOF
+
+# 创建gateway
+cat <<EOF | kubectl apply -f -
+---
+apiVersion: gateway.kubesphere.io/v1alpha1
+kind: Gateway
+metadata:
+  annotations:
+    kubesphere.io/annotations: OpenELB
+    kubesphere.io/creator: admin
+  name: kubesphere-router-ks-system
+  namespace: kubesphere-controls-system
+spec:
+  controller:
+    replicas: 1
+    scope:
+      enabled: true
+      namespace: kubesphere-system
+  deployment:
+    annotations:
+      servicemesh.kubesphere.io/enabled: "false"
+    replicas: 1
+  service:
+    annotations:
+      eip.openelb.kubesphere.io/v1alpha2: $ORG_DOMAIN-integration-ks-eip
+      lb.kubesphere.io/v1alpha1: openelb
+      protocol.openelb.kubesphere.io/v1alpha1: layer2
+    type: LoadBalancer
+EOF
+
+# 创建ingress
+cat <<EOF | kubectl apply -f -
+---
+kind: Ingress
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: ks-ingress
+  namespace: kubesphere-system
+  annotations:
+    kubesphere.io/creator: admin
+spec:
+  tls:
+    - hosts:
+        - integration.it.ouxxa.com
+      secretName: ouxxa-integration-tls
+  rules:
+    - host: integration.it.ouxxa.com
+      http:
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: ks-console
+                port:
+                  number: 80
+EOF
+echo "=====================================Done.====================================="
+
+
+echo "==========================修复argocd out of sync问题============================"
+# cert-manager Certificate duration和renewBefore不识别导致out of sync
+kubectl patch -n argocd configmap argocd-cm --type=json \
+  -p="[{\"op\": \"add\", \"path\": \"/data/resource.customizations.ignoreDifferences.cert-manager.io_Certificate\", \"value\": \"jsonPointers:\n- /spec/duration\n- /spec/renewBefore\n\"}]"
+echo "===============================Done.============================================"
+
+
+echo "===============================jenkins agent自定义镜像=========================="
+# 设置jenkins全局代理
+kubectl get cm -n kubesphere-devops-system jenkins-casc-config -o json \
+  | jq --arg patch "`cat ./config/devops/jenkins.yaml`" '.data["jenkins.yaml"] = $patch' \
+  | kubectl replace -f -
+# 设置jenkins自定义ci agent及镜像
+kubectl get cm -n kubesphere-devops-system jenkins-casc-config -o json \
+  | jq --arg patch "`cat ./config/devops/jenkins_user.yaml`" '.data["jenkins_user.yaml"] = $patch' \
+  | kubectl replace -f -
+
+kubectl rollout restart -n kubesphere-devops-system deploy devops-jenkins
+echo "=======================================Done.===================================="
+
+
+echo "=========================创建代理configmap修复github访问========================"
+cat <<EOF | kubectl apply -f -
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+ namespace: kube-system
+ name: proxy-config
+ annotations:
+   reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+   reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "argocd,kubesphere-devops-system,kubesphere-devops-worker,micrc-system"
+   reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+   reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "argocd,kubesphere-devops-system,kubesphere-devops-worker,micrc-system"
+data:
+ http_proxy: "$NET_HTTP_PROXY"
+ HTTP_PROXY: "$NET_HTTP_PROXY"
+ https_proxy: "$NET_HTTP_PROXY"
+ HTTPS_PROXY: "$NET_HTTP_PROXY"
+ all_proxy: "$NET_SOCK_PROXY"
+ ALL_PROXY: "$NET_SOCK_PROXY"
+ no_proxy: "${IGNORE_PROXY}"
+ NO_PROXY: "${IGNORE_PROXY}"
+EOF
+
+kubectl rollout restart -n kube-system deploy reflector
+
+# devops-argocd-repo-server, devops-jenkins需要代理访问github
+kubectl patch -n argocd deployment devops-argocd-repo-server \
+  -p '{"spec": {"template": {"spec": {"containers": [{"name": "repo-server", "envFrom": [{ "configMapRef": { "name": "proxy-config" } }]}]}}}}'
+kubectl patch -n kubesphere-devops-system deployment  devops-jenkins \
+  -p '{"spec": {"template": {"spec": {"containers": [{"name": "devops-jenkins", "envFrom": [{"configMapRef": {"name": "proxy-config"}}]}]}}}}'
+
+kubectl rollout restart -n argocd deploy devops-argocd-repo-server
+kubectl rollout restart -n kubesphere-devops-system deploy devops-jenkins
+echo "==================================Done.========================================="
+
+
+# 安装gitlab
+# 安装证书
+# cat <<EOF | kubectl apply -f -
+# ---
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: aliyun-secret
+#   namespace: gitlab-system
+# type: Opaque
+# stringData:
+#   access-key: `cat ./owner.config | awk '{if($1 == "DNS01_KEY") print $2}'`
+#   secret-key: `cat ./owner.config | awk '{if($1 == "DNS01_SECRET") print $2}'`
+
+# ---
+# apiVersion: cert-manager.io/v1
+# kind: Issuer
+# metadata:
+#   namespace: gitlab-system
+#   name: letsencrypt
+# spec:
+#   acme:
+#     email: developer@ouxxa.com
+#     server: https://acme-v02.api.letsencrypt.org/directory
+#     privateKeySecretRef:
+#       name: letsencrypt-account-key
+#     solvers:
+#     - dns01:
+#         webhook:
+#           groupName: acme.micrc.io
+#           solverName: alidns-solver
+#           config:
+#             accessTokenSecretRef:
+#               name: aliyun-secret
+#               key: access-key
+#             secretKeySecretRef:
+#               name: aliyun-secret
+#               key: secret-key
+# EOF
+
+# # 安装
+# kubectl create namespace gitlab-system
+# helm repo add gitlab https://charts.gitlab.io
+# helm repo update
+
+# kubectl apply -f ./config/devops/gitlab-cert.yaml
+
+# helm upgrade --install gitlab gitlab/gitlab --namespace gitlab-system \
+#   --version $GITLAB_VERSION \
+#   -f ./config/devops/gitlab-values.yaml
+
+
+echo "######################################"
+echo "## Successful -- 完成."
+echo "## 在kubesphere ‘控制台’ 的 ‘系统组件’ 确保所有组件正常运行后开始使用"
+echo "######################################"

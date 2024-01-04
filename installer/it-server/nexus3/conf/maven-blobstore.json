@@ -1,0 +1,5 @@
+{
+  "name":"maven",
+  "path":"/nexus-data/blobs/maven",
+  "type":"file"
+}

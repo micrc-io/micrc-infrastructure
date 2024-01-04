@@ -1,0 +1,10 @@
+{
+  "userId":"anonymous",
+  "firstName":"Anonymous",
+  "lastName":"User",
+  "emailAddress":"anonymous@example.org",
+  "source":"default",
+  "status":"active",
+  "roles":["nx-anonymous", "nx-metrics"],
+  "externalRoles":[]
+}

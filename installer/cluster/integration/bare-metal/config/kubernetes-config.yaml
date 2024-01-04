@@ -1,0 +1,55 @@
+apiVersion: kubekey.kubesphere.io/v1alpha2
+kind: Cluster
+metadata:
+  name: ouxxa-integration
+spec:
+  hosts:
+  - {name: master1, address: 10.0.0.11, internalAddress: 10.0.0.11, user: root, password: wsx1qaz@WSX}
+  - {name: master2, address: 10.0.0.21, internalAddress: 10.0.0.21, user: root, password: wsx1qaz@WSX}
+  - {name: master3, address: 10.0.0.31, internalAddress: 10.0.0.31, user: root, password: wsx1qaz@WSX}
+  - {name: worker1, address: 10.0.0.12, internalAddress: 10.0.0.12, user: root, password: wsx1qaz@WSX}
+  - {name: worker2, address: 10.0.0.22, internalAddress: 10.0.0.22, user: root, password: wsx1qaz@WSX}
+  - {name: worker3, address: 10.0.0.32, internalAddress: 10.0.0.32, user: root, password: wsx1qaz@WSX}
+  - {name: worker4, address: 10.0.0.41, internalAddress: 10.0.0.41, user: root, password: wsx1qaz@WSX}
+  - {name: worker5, address: 10.0.0.51, internalAddress: 10.0.0.51, user: root, password: wsx1qaz@WSX}
+  roleGroups:
+    etcd:
+    - master1
+    - master2
+    - master3
+    control-plane:
+    - master1
+    - master2
+    - master3
+    worker:
+    - worker1
+    - worker2
+    - worker3
+    - worker4
+    - worker5
+  controlPlaneEndpoint:
+    ##Internal loadbalancer for apiservers 
+    internalLoadbalancer: haproxy
+    domain: lb.integration.it.ouxxa.com
+    address: ""
+    port: 6443
+  kubernetes:
+    version: v1.22.10
+    clusterName: integration.it.ouxxa.com
+    imageRepo: kubesphere
+    masqueradeAll: false
+    maxPods: 128
+    nodeCidrMaskSize: 24
+    proxyMode: ipvs
+    autoRenewCerts: true
+    containerManager: docker
+  etcd:
+    type: kubekey
+  network:
+    plugin: flannel
+    kubePodsCIDR: 172.16.0.0/12
+    kubeServiceCIDR: 192.168.0.0/16
+  registry:
+    registryMirrors: ["https://repo.it.ouxxa.com"]
+    privateRegistry: ""
+  addons: []

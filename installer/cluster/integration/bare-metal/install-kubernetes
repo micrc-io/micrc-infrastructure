@@ -1,0 +1,131 @@
+#!/bin/bash
+
+
+echo "#######################################"
+echo "## Start -- 开始安装Kubernetes"
+echo "#######################################"
+
+
+# 设置环境变量
+VERSION=v1.22.10
+
+
+echo "=============================开始安装kubernetes================================"
+./kk create cluster --with-kubernetes $VERSION -f ./config/kubernetes-config.yaml -y
+echo "==================================Done.======================================="
+
+
+echo "=============修改kube-proxy配置mode: "ipvs"和strictARP: true============="
+kubectl get configmap kube-proxy -n kube-system -o yaml | \
+        sed -e 's/mode: ""/mode: "ipvs"/' | \
+        sed -e "s/strictARP: false/strictARP: true/" | \
+        kubectl diff -f - -n kube-system
+kubectl get configmap kube-proxy -n kube-system -o yaml | \
+	sed -e 's/mode: ""/mode: "ipvs"/' | \
+	sed -e "s/strictARP: false/strictARP: true/" | \
+	kubectl apply -f - -n kube-system
+kubectl get pod -n kube-system | grep kube-proxy | awk '{system("kubectl delete pod "$1" -n kube-system")}'
+sleep 20
+kubectl get pod -n kube-system | grep kube-proxy | awk '{system("kubectl logs "$1" -n kube-system")}' | egrep "ipvs"
+echo "=========================Done.============================="
+
+
+echo "=====================创建openelb负载均衡器ip pool====================="
+function waitOpenELB() {
+  sleep 60
+  CNT=0
+  while [ 0 -eq 0 ]; do
+    STATE=`kubectl get pod -n kube-system`
+    if [ $? -eq 0 ]; then
+      STATE=`echo "$STATE" | grep openelb-manager | awk '$3 !~ /Running|STATUS/ {print $3}'`
+      if [ -n "$STATE" ]; then
+        CNT=`expr $CNT + 5`
+        echo "OpenELB installing...$CNT s"
+        sleep 5
+      else
+        break;
+      fi
+    else
+      return 255;
+    fi
+  done
+}
+
+# 安装openelb，用于非云环境提供负载均衡ip
+kubectl label --overwrite nodes master1 master2 master3 lb.kubesphere.io/v1alpha1=openelb
+helm repo add stable https://charts.kubesphere.io/stable
+helm repo update
+helm upgrade --install -f ./config/openelb-values.yaml -n kube-system openelb stable/openelb
+
+kubectl scale deployment openelb-manager --replicas=3 -n kube-system
+
+echo "等待OpenELB安装..."
+while [ 0 -eq 0 ]; do
+  waitOpenELB
+  if [ $? -eq 0 ]; then
+    break;
+  else
+    echo "Error. retry after 2s"
+    sleep 2
+  fi
+done
+echo "OpenELB insalled. "
+echo "==============================Done.=================================="
+
+
+echo "===========================安装longhron cas存储======================"
+function waitLonghorn() {
+  sleep 60
+  CNT=0
+  while [ 0 -eq 0 ]; do
+    STATE=`kubectl get pod -n longhorn-system`
+    if [ $? -eq 0 ]; then
+      STATE=`echo "$STATE" | egrep 'longhorn|csi|engine|manager' | awk '$3 !~ /Running|STATUS/ {print $3}'`
+      if [ -n "$STATE" ]; then
+        CNT=`expr $CNT + 5`
+        echo "Longhorn installing...$CNT s"
+        sleep 5
+      else
+        break;
+      fi
+    else
+      return 255;
+    fi
+  done
+}
+# note: 云环境使用供应商提供的存储方案，存储类不适合自行处理;
+# 开发集成集群使用cas存储方案，外加nfs二级备份存储
+# 安装longhorn
+kubectl create ns longhorn-system
+helm upgrade --install longhorn ./config/longhorn --namespace longhorn-system \
+  --values ./config/longhorn-values.yaml
+# 配置longhorn console eip
+# kubectl patch -n longhorn-system svc/longhorn-frontend --type=json \
+#   -p="[ \
+#   {\"op\": \"add\", \"path\": \"/metadata/annotations/lb.kubesphere.io~1v1alpha1\", \"value\": \"openelb\"}, \
+#   {\"op\": \"add\", \"path\": \"/metadata/annotations/protocol.openelb.kubesphere.io~1v1alpha1\", \"value\": \"layer2\"}, \
+#   {\"op\": \"add\", \"path\": \"/metadata/annotations/eip.openelb.kubesphere.io~1v1alpha2\", \"value\": \"$ORG_DOMAIN-dev-eip\"}, \
+#   {\"op\": \"add\", \"path\": \"/spec/loadBalancerIP\", \"value\": \"$STORAGE_ADDRESS\"}, \
+#   {\"op\": \"replace\", \"path\": \"/spec/type\", \"value\": \"LoadBalancer\"}
+#   ]"
+
+echo "等待Longhorn安装..."
+while [ 0 -eq 0 ]; do
+  waitLonghorn
+  if [ $? -eq 0 ]; then
+    break;
+  else
+    echo "Error. retry after 2s"
+    sleep 2
+  fi
+done
+echo "Longhorn insalled. "
+echo "===============================Done.================================"
+
+
+echo "######################################"
+echo "## Successful -- 安装完成."
+echo "## 使用 kubectl get nodes / kubectl get pod --all-namespaces 查看详情"
+echo "## 访问http://$STORAGE_ADDRESS 查看存储控制台"
+echo "######################################"
+

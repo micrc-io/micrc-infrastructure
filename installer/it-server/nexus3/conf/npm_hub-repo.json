@@ -1,0 +1,15 @@
+{
+  "attributes": {
+    "npm": {},
+  	"group": {
+  	  "memberNames": ["npm-taobao-proxy"]
+  	},
+  	"storage":{
+  	  "blobStoreName": "npm",
+  	  "strictContentTypeValidation": false,
+  	}
+  },
+  "name": "npm-hub",
+  "online": true,
+  "type": "npm-group"
+}

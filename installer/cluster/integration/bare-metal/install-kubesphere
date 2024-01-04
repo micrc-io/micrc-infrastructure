@@ -1,0 +1,255 @@
+#!/bin/bash
+
+
+echo "#######################################"
+echo "## Start -- 开始最小化安装KubeSphere"
+echo "#######################################"
+
+
+# ks安装在kubesphere-system下的pod都有对master taints(污点)的tolerations(容忍) - node-role.kubernetes.io/master:NoSchedule
+# 导致openldap和redis的pvc在master节点上获取存储卷，而longhorn安装是不使用master节点存储的
+# 所以在安装前为3个master节点新增加一个taint
+kubectl taint nodes master1 master2 master3 node-role.micrc.io/master=:NoSchedule --overwrite
+
+
+function wait() {
+	sleep 60
+	CNT=0
+	while [[ `kubectl -n kubesphere-system get pod -o name | grep ks-installer | xargs kubectl -n kubesphere-system logs --tail=20 | grep Welcome | wc -l` -eq 0 ]]; do
+		CNT=`expr $CNT + 1`
+		echo "等待安装...$CNT"
+		sleep 5
+	done
+	kubectl -n kubesphere-system get pod -o name | grep ks-installer | xargs kubectl -n kubesphere-system logs --tail=50
+}
+
+
+CERTMANAGER_VERSION=v1.10.1
+# 组织域名称
+ORG_DOMAIN=`cat ./owner.config | awk '{if($1 == "ORG_DOMAIN") print $2}'`
+# 组织域名
+ORG_DOMAIN_NAME=`cat ./owner.config | awk '{if($1 == "ORG_DOMAIN_NAME") print $2}'`
+DNS01_KEY=`cat ./owner.config | awk '{if($1 == "DNS01_KEY") print $2}'`
+DNS01_SECRET=`cat ./owner.config | awk '{if($1 == "DNS01_SECRET") print $2}'`
+
+
+echo "=============配置ectd监控============"
+cat <<EOF | kubectl create -f -
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubesphere-monitoring-system
+EOF
+kubectl -n kubesphere-monitoring-system create secret generic kube-etcd-client-certs  \
+        --from-file=etcd-client-ca.crt=/etc/ssl/etcd/ssl/ca.pem  \
+        --from-file=etcd-client.crt=/etc/ssl/etcd/ssl/node-master1.pem  \
+        --from-file=etcd-client.key=/etc/ssl/etcd/ssl/node-master1-key.pem
+echo "=================Done.================="
+
+
+echo "============================创建cert-manager========================="
+kubectl create namespace cert-manager
+helm repo add jetstack https://charts.jetstack.io
+helm repo update
+
+helm upgrade --install cert-manager jetstack/cert-manager --namespace cert-manager \
+	--version $CERTMANAGER_VERSION \
+	--set image.repository=jetstack/cert-manager-controller \
+	--set image.tag=$CERTMANAGER_VERSION \
+	--set webhook.image.repository=jetstack/cert-manager-webhook \
+	--set webhook.image.tag=$CERTMANAGER_VERSION \
+	--set cainjector.image.repository=jetstack/cert-manager-cainjector \
+	--set cainjector.image.tag=$CERTMANAGER_VERSION \
+	--set startupapicheck.image.repository=jetstack/cert-manager-ctl \
+	--set startupapicheck.image.tag=$CERTMANAGER_VERSION \
+	--set installCRDs=true \
+	--set 'extraArgs={--dns01-recursive-nameservers-only,--dns01-recursive-nameservers=223.5.5.5:53\,1.1.1.1:53}'
+
+helm upgrade --install alidns-webhook ./config/cert/alidns-webhook --namespace cert-manager \
+  --set image.repository=devmachine-fr/cert-manager-alidns-webhook/cert-manager-alidns-webhook \
+	--set groupName=acme.$ORG_DOMAIN_NAME
+
+# 创建alidns secret
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alidns-secret
+  namespace: cert-manager
+type: Opaque
+stringData:
+  access-key: $DNS01_KEY
+  secret-key: $DNS01_SECRET
+EOF
+# 创建集群证书
+cat <<EOF | kubectl apply -f -
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  namespace: cert-manager
+  name: letsencrypt
+spec:
+  acme:
+    email: developer@ouxxa.com
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-account-key
+    solvers:
+    - dns01:
+        webhook:
+          groupName: acme.$ORG_DOMAIN_NAME
+          solverName: alidns-solver
+          config:
+            accessTokenSecretRef:
+              name: alidns-secret
+              key: access-key
+            secretKeySecretRef:
+              name: alidns-secret
+              key: secret-key
+EOF
+cat <<EOF | kubectl apply -f -
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  namespace: cert-manager
+  name: ouxxa-integration-cert
+spec:
+  secretName: ouxxa-integration-tls
+  secretTemplate:
+    annotations:
+      reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+      reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "kubesphere-system,longhorn-system"
+      reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+      reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "kubesphere-system,longhorn-system"
+  dnsNames:
+  - integration.it.ouxxa.com
+  - "*.integration.it.ouxxa.com"
+  issuerRef:
+    name: letsencrypt
+    kind: Issuer
+  duration: 2160h
+  renewBefore: 360h
+EOF
+echo "=================================Done.==============================="
+
+
+echo "===========================创建sealed-secrets========================"
+kubectl apply -f ./config/sealed-secrets.yaml
+echo "=================================Done.================================"
+
+
+echo "========================安装kubernetes-reflector====================="
+kubectl apply -f ./config/reflector.yaml
+echo "=================================Done.==============================="
+
+
+echo "=================安装kubesphere================="
+# 包括日志，事件，监控告警（包括etcd监控），审计，服务拓扑
+kubectl apply -f ./config/kubesphere-installer.yaml
+kubectl apply -f ./config/kubesphere-config.yaml
+
+echo "等待kubesphere安装..."
+wait
+echo "====================Done.======================="
+
+
+echo "=================配置kubesphere-basic-namespace================="
+# 为namespace添加label: istio-injection=disabled不允许sidecar注入, kubesphere.io/workspace=system-workspace标记为kubesphere系统空间
+kubectl label namespace kube-system istio-injection=disabled --overwrite
+kubectl label namespace kube-system kubesphere.io/workspace=system-workspace --overwrite
+kubectl label namespace kube-public istio-injection=disabled --overwrite
+kubectl label namespace kube-public kubesphere.io/workspace=system-workspace --overwrite
+kubectl label namespace default istio-injection=disabled --overwrite
+kubectl label namespace default kubesphere.io/workspace=system-workspace --overwrite	
+kubectl label namespace kube-node-lease istio-injection=disabled --overwrite
+kubectl label namespace kube-node-lease kubesphere.io/workspace=system-workspace --overwrite
+kubectl label namespace longhorn-system istio-injection=disabled --overwrite
+kubectl label namespace longhorn-system kubesphere.io/workspace=system-workspace --overwrite
+kubectl label namespace cert-manager istio-injection=disabled --overwrite
+kubectl label namespace cert-manager kubesphere.io/workspace=system-workspace --overwrite
+
+# 为namespace添加label: istio-injection=disabled不允许sidecar注入
+kubectl label namespace kubekey-system kubesphere.io/workspace=system-workspace --overwrite
+kubectl label namespace kubekey-system istio-injection=disabled --overwrite
+kubectl label namespace kubesphere-system istio-injection=disabled --overwrite
+kubectl label namespace kubesphere-logging-system istio-injection=disabled --overwrite
+kubectl label namespace kubesphere-monitoring-system istio-injection=disabled --overwrite
+kubectl label namespace kubesphere-monitoring-federated istio-injection=disabled --overwrite
+echo "==============================Done.============================="
+
+
+echo "=================安装kubesphere-devops-ci/cd================="
+kubectl patch -n kubesphere-system cc ks-installer --type=json -p='[{"op": "replace", "path": "/spec/devops/enabled", "value": true}]'
+
+echo "等待kubesphere-devops安装..."
+wait
+
+# 修改argocd的镜像地址，以使用nexus proxy
+kubectl patch -n argocd deploy devops-argocd-dex-server --type=json \
+	-p="[ \
+	{\"op\": \"replace\", \"path\": \"/spec/template/spec/initContainers/0/image\", \"value\": \"argoproj/argocd:v2.3.3\"}, \
+	{\"op\": \"replace\", \"path\": \"/spec/template/spec/containers/0/image\", \"value\": \"dexidp/dex:v2.30.2\"} \
+	]"
+
+kubectl patch -n argocd deploy devops-argocd-server --type=json \
+	-p="[{\"op\": \"replace\", \"path\": \"/spec/template/spec/containers/0/image\", \"value\": \"argoproj/argocd:v2.3.3\"}]"
+
+kubectl patch -n argocd deploy devops-argocd-applicationset-controller --type=json \
+	-p="[{\"op\": \"replace\", \"path\": \"/spec/template/spec/containers/0/image\", \"value\": \"argoproj/argocd-applicationset:v0.4.1\"}]"
+
+kubectl patch -n argocd deploy devops-argocd-repo-server --type=json \
+	-p="[ \
+	{\"op\": \"replace\", \"path\": \"/spec/template/spec/initContainers/0/image\", \"value\": \"argoproj/argocd:v2.3.3\"}, \
+	{\"op\": \"replace\", \"path\": \"/spec/template/spec/containers/0/image\", \"value\": \"argoproj/argocd:v2.3.3\"} \
+	]"
+
+kubectl patch -n argocd deploy devops-argocd-notifications-controller --type=json \
+	-p="[{\"op\": \"replace\", \"path\": \"/spec/template/spec/containers/0/image\", \"value\": \"argoproj/argocd:v2.3.3\"}]"
+
+kubectl patch -n argocd statefulset devops-argocd-application-controller --type=json \
+	-p="[{\"op\": \"replace\", \"path\": \"/spec/template/spec/containers/0/image\", \"value\": \"argoproj/argocd:v2.3.3\"}]"
+echo "============================Done.============================"
+
+echo "=================配置kubesphere-devops-namespace================="
+kubectl label namespace kubesphere-devops-system kubesphere.io/workspace=system-workspace --overwrite
+kubectl label namespace kubesphere-devops-system istio-injection=disabled --overwrite
+kubectl label namespace kubesphere-devops-worker kubesphere.io/workspace=system-workspace --overwrite
+kubectl label namespace kubesphere-devops-worker istio-injection=disabled --overwrite
+kubectl label namespace argocd kubesphere.io/workspace=system-workspace --overwrite
+kubectl label namespace argocd istio-injection=disabled --overwrite
+echo "==============================Done.============================="
+
+
+echo "=================安装kubesphere-openpitrix-应用管理================="
+kubectl patch -n kubesphere-system cc ks-installer --type=json -p='[{"op": "replace", "path": "/spec/openpitrix/store/enabled", "value": true}]'
+
+echo "等待kubesphere-openpitrix安装..."
+wait
+echo "=============================Done.================================"
+
+
+echo "===================安装kubesphere-istio-服务治理===================="
+kubectl patch -n kubesphere-system cc ks-installer --type=json -p='[{"op": "replace", "path": "/spec/servicemesh/enabled", "value": true}]'
+
+echo "等待kubesphere-istio安装..."
+wait
+
+# 安装git-operator
+./istioctl operator init --watchedNamespaces=
+kubectl label namespace istio-operator kubesphere.io/workspace=system-workspace --overwrite
+echo "=============================Done.================================"
+
+
+echo "========================安装micrc设计系统和模式管理器==================="
+kubectl create ns micrc-system
+
+kubectl label namespace micrc-system kubesphere.io/workspace=system-workspace --overwrite
+kubectl label namespace micrc-system istio-injection=disabled --overwrite
+echo "=================================Done.==============================="
+
+
+echo "######################################"
+echo "## Successful -- 安装完成."
+echo "## 使用 kubectl -n kubesphere-system get pod -o name | grep ks-installer | xargs kubectl -n kubesphere-system logs 确保完成安装"
+echo "######################################"
