@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# todo 账户创建后，其他配置可使用aliyun openapi自动化
 # 准备工作
 # 1. 开通aliyun账户，实名认证并充值，创建域名，企业邮箱和云解析
 # 2. 创建名为operator@组织域名的RAM用户并授予管理员权限；为组织创建api RAM用户，授予DNS权限(用于cert-manager的DNS01校验)
@@ -208,9 +209,25 @@ systemctl start openvpn
 docker run -v /opt/openvpn:/etc/openvpn --rm -it kylemanna/openvpn easyrsa build-client-full $ORG_DOMAIN nopass # 需要一次输入
 docker run -v /opt/openvpn:/etc/openvpn --rm kylemanna/openvpn ovpn_getclient $ORG_DOMAIN > /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
 echo cipher AES-256-CBC >> /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
-echo link-mtu 1559 >> /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
-echo dhcp-option DNS 100.100.2.136 >> /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
-echo dhcp-option DNS 100.100.2.138 >> /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
+echo script-security 2 >> /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
+echo up ./up >> /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
+echo down ./down >> /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
+
+tee /opt/openvpn-client/up <<-'EOF'
+#!/bin/bash -e
+mkdir -p /etc/resolver
+touch /etc/resolver/prod.it.ouxxa.com
+echo domain prod.it.ouxxa.com >> /etc/resolver/prod.it.ouxxa.com
+echo nameserver 100.100.2.136 >> /etc/resolver/prod.it.ouxxa.com
+echo nameserver 100.100.2.138 >> /etc/resolver/prod.it.ouxxa.com
+echo search_order 1 >> /etc/resolver/prod.it.ouxxa.com
+echo timeout 5 >> /etc/resolver/prod.it.ouxxa.com
+EOF
+
+tee /opt/openvpn-client/down <<-'EOF'
+#!/bin/bash
+rm -rf /etc/resolver
+EOF
 echo "=====================Done.======================"
 
 
