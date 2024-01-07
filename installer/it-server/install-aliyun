@@ -28,7 +28,7 @@ RAM_KEY=`cat ./owner.config | awk '{if($1 == "RAM_KEY") print $2}'` # aliyun acc
 RAM_SECRET=`cat ./owner.config | awk '{if($1 == "RAM_SECRET") print $2}'` # aliyun key secret
 PROFILE=`cat ./owner.config | awk '{if($1 == "PROFILE") print $2}'` # 当前专网环境，生产或是集成prod/intgr
 IT_EIP=`cat ./owner.config | awk '{if($1 == "IT_EIP") print $2}'` # ECS-IT服务器EIP地址
-OPENVPN_CA_PASS=`cat ./owner.config | awk '{if($1 == "OPENVPN_CA_PASS") print $2}'` # OPENVPN的CA密码
+OPENVPN_PASS=`cat ./owner.config | awk '{if($1 == "OPENVPN_PASS") print $2}'` # OPENVPN的CA和管理员密码
 VPC_NAME_SUFFIX=`cat ./owner.config | awk '{if($1 == "VPC_NAME_SUFFIX") print $2}'` # VPC名称小写后缀vpc-1-production
 VPC_SUBNET=`cat ./owner.config | awk '{if($1 == "VPC_SUBNET") print $2}'` # VPC网段10.10.0.0 255.255.0.0
 PROXY_REPO_PASS=`cat ./owner.config | awk '{if($1 == "PROXY_REPO_PASS") print $2}'` # 代理仓库管理密码
@@ -175,8 +175,11 @@ ca /opt/openvpn/pki/ca.crt
 cert /opt/openvpn/pki/issued/$IT_EIP.crt
 key /opt/openvpn/pki/private/$IT_EIP.key
 dh /opt/openvpn/pki/dh.pem
+auth-user-pass-verify /opt/openvpn/checkpsw.sh via-env
+username-as-common-name
+script-security 3
 server 10.255.255.0 255.255.255.0
-ifconfig-pool-persist /opt/openvpn/ipp.txt
+;ifconfig-pool-persist /opt/openvpn/ipp.txt
 push "route $VPC_SUBNET"
 push "route 100.100.2.128 255.255.255.128"
 keepalive 10 120
@@ -186,8 +189,38 @@ persist-key
 persist-tun
 status /opt/openvpn/openvpn-status.log
 verb 3
+duplicate-cn
 ;explicit-exit-notify 1
 EOF
+
+tee /opt/openvpn/checkpsw.sh <<-'EOF'
+#!/bin/sh
+PASSFILE="/opt/openvpn/psw-file"
+LOG_FILE="/opt/openvpn/openvpn-password.log"
+TIME_STAMP=`date "+%Y-%m-%d %T"`
+if [ ! -r "${PASSFILE}" ]; then
+  echo "${TIME_STAMP}: Could not open password file \"${PASSFILE}\" for reading." >> ${LOG_FILE}
+  exit 1
+fi
+CORRECT_PASSWORD=`awk '!/^;/&&!/^#/&&$1=="'${username}'"{print $2;exit}' ${PASSFILE}`
+if [ "${CORRECT_PASSWORD}" = "" ]; then
+  echo "${TIME_STAMP}: User does not exist: username=\"${username}\", password=\"${password}\"." >> $$
+  exit 1
+fi
+if [ "${password}" = "${CORRECT_PASSWORD}" ]; then
+  echo "${TIME_STAMP}: Successful authentication: username=\"${username}\"." >> ${LOG_FILE}
+  exit 0
+fi
+echo "${TIME_STAMP}: Incorrect password: username=\"${username}\", password=\"${password}\"." >> ${LO$
+exit 1
+EOF
+chmod +x /opt/openvpn/checkpsw.sh
+
+cat > /opt/openvpn/psw-file <<EOF
+$ORG_DOMAIN $OPENVPN_PASS
+EOF
+chmod 400 /opt/openvpn/psw-file
+chown nobody:nobody /opt/openvpn/psw-file
 
 tee /opt/openvpn/openvpn.service <<-'EOF'
 [Unit]
@@ -208,6 +241,7 @@ systemctl start openvpn
 # todo expect自动输入
 docker run -v /opt/openvpn:/etc/openvpn --rm -it kylemanna/openvpn easyrsa build-client-full $ORG_DOMAIN nopass # 需要一次输入
 docker run -v /opt/openvpn:/etc/openvpn --rm kylemanna/openvpn ovpn_getclient $ORG_DOMAIN > /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
+echo auth-user-pass >> /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
 echo cipher AES-256-CBC >> /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
 echo script-security 2 >> /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
 echo up ./up >> /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
