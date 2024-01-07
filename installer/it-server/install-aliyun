@@ -1,159 +1,77 @@
 #!/bin/bash
 
+# 准备工作
+# 1. 开通aliyun账户，实名认证并充值，创建域名，企业邮箱和云解析
+# 2. 创建名为operator@组织域名的RAM用户并授予管理员权限；为组织创建api RAM用户，授予DNS权限(用于cert-manager的DNS01校验)
+# 3. 创建组织级资源组，每个运营/集成地域分别创建VPC专网和交换机(每个可用区一个)
+# 4. 运营/集成地域每个VPC内分别创建私网DNS: prod/intgr.it.组织域名(如ouxxa.com)
+# 5. 每个组织VPC内分别创建两个NAS文件系统(IT NAS和CLUSTER NAS)，用于组织级IT服务器和组织级集群存储
+# 6. 为组织创建OSS存储桶，用于组织级软件包存储下载
+# 7. 每个组织VPC中创建ECS(4 * 16 + 40)，实例名为"组织名-IT"，将IT NAS文件系统挂载到/opt目录。创建私网DNS解析到服务器私网IP
+# 8. 每个组织VPC中添加自定义路由条目，名为"自建NAT网关"，0.0.0.0/0 下一跳为ECS IT服务器
+# 9. 调整ECS所在安全组规则，VPC网段内开放22、80、443端口，workbench网段(100.104.0.0/16)开放22端口，完全开放(0.0.0.0/0)1194端口，全部是TCP
+# 10. 使用workbench进入ECS IT终端命令行(内网IP)，执行安装脚本自建NAT网关、OPENVPN网关、证书管理区和代理仓库(nginx + nexus3)
 
 echo "#######################################"
-echo "## Start -- 开始安装"
+echo "## Start -- 开始安装(aliyun ecs it server)"
 echo "#######################################"
 
 
-echo "==========关闭防火墙和selinux=========="
-systemctl stop firewalld && systemctl disable firewalld
+NEXUS3_TAG=3.63.0
+
+
+echo "===============读取配置信息=============="
+ORG_DOMAIN=`cat ./owner.config | awk '{if($1 == "ORG_DOMAIN") print $2}'` # 组织域名称
+ORG_DOMAIN_NAME=`cat ./owner.config | awk '{if($1 == "ORG_DOMAIN_NAME") print $2}'` # 组织域名
+RAM_KEY=`cat ./owner.config | awk '{if($1 == "RAM_KEY") print $2}'` # aliyun access key
+RAM_SECRET=`cat ./owner.config | awk '{if($1 == "RAM_SECRET") print $2}'` # aliyun key secret
+PROFILE=`cat ./owner.config | awk '{if($1 == "PROFILE") print $2}'` # 当前专网环境，生产或是集成prod/intgr
+IT_EIP=`cat ./owner.config | awk '{if($1 == "IT_EIP") print $2}'` # ECS-IT服务器EIP地址
+OPENVPN_CA_PASS=`cat ./owner.config | awk '{if($1 == "OPENVPN_CA_PASS") print $2}'` # OPENVPN的CA密码
+VPC_NAME_SUFFIX=`cat ./owner.config | awk '{if($1 == "VPC_NAME_SUFFIX") print $2}'` # VPC名称小写后缀vpc-1-production
+VPC_SUBNET=`cat ./owner.config | awk '{if($1 == "VPC_SUBNET") print $2}'` # VPC网段10.10.0.0 255.255.0.0
+PROXY_REPO_PASS=`cat ./owner.config | awk '{if($1 == "PROXY_REPO_PASS") print $2}'` # 代理仓库管理密码
+echo "================Done.=================="
+
+
+echo "===============关闭selinux=============="
 setenforce 0
 sed -i '7s/enforcing/disabled/' /etc/selinux/config
 echo "================Done.=================="
 
 
-echo "===============同步时间=================="
-yum -y install chrony
-sed -i.bak '3,6d' /etc/chrony.conf && sed -i '3cserver ntp.cloud.aliyuncs.com' /etc/chrony.conf
-systemctl start chronyd && systemctl enable chronyd
-
-chronyc sources
+echo "===============设置时区===================="
 timedatectl set-timezone UTC
 date
 echo "================Done.===================="
 
 
+echo "===========配置防火墙和转发规则============="
+echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
+sysctl -p
+
+systemctl enable firewalld
+systemctl start firewalld
+firewall-cmd --add-masquerade --permanent
+firewall-cmd --add-service=openvpn --permanent
+firewall-cmd --add-port=1194/tcp --permanent
+firewall-cmd --add-service=http --permanent
+firewall-cmd --add-service=https --permanent
+firewall-cmd --reload
+echo "================Done.===================="
+
+
+echo "===============升级系统包===================="
 yum update -y
 yum install -y epel-release
-tee /etc/yum.repos.d/nginx.repo <<-'EOF'
-[nginx-stable]
-name=nginx stable repo
-baseurl=http://nginx.org/packages/centos/$releasever/$basearch/
-gpgcheck=1
-enabled=1
-gpgkey=https://nginx.org/keys/nginx_signing.key
-module_hotfixes=true
-EOF
-
-tee /etc/yum.repos.d/docker.repo <<-'EOF'
-[docker-ce-stable]
-name=Docker CE Stable - $basearch
-baseurl=https://download.docker.com/linux/centos/7/$basearch/stable
-gpgcheck=1
-enabled=1
-gpgkey=https://download.docker.com/linux/centos/gpg
-EOF
-
-
-echo "===========安装docker-ce============="
-yum -y install docker-ce docker-ce-cli
-systemctl enable docker && systemctl start docker
-
-touch /etc/docker/daemon.json
-tee /etc/docker/daemon.json <<-'EOF'
-{
-  "log-opts": {
-    "max-size": "5m",
-    "max-file": "3"
-  },
-  "exec-opts": ["native.cgroupdriver=systemd"]
-}
-EOF
-
-systemctl daemon-reload
-systemctl restart docker
-
-docker info
-docker version
-echo "===============Done.=================="
-
-
-echo "======================安装依赖工具===================="
-yum install -y wget jq vim yum-utils net-tools telnet openssl
-echo "=========================Done.========================"
-
-
-
-echo "========================安装代理======================"
-# clash
-CLASH_VERSION=v1.11.12
-mkdir /opt/clash
-mkdir /opt/clash/bin
-mkdir /opt/clash/log
-/bin/cp ./packages/clash/clash-linux-amd64-$CLASH_VERSION.gz /opt/clash/
-gzip -d /opt/clash/clash-linux-amd64-$CLASH_VERSION.gz
-mv /opt/clash/clash-linux-amd64-$CLASH_VERSION /opt/clash/bin/clash
-chmod +x /opt/clash/bin/clash
-
-# subconverter
-/bin/cp ./packages/clash/subconverter_linux64.tar.gz /opt/clash/
-tar xzvf /opt/clash/subconverter_linux64.tar.gz -C /opt/clash/
-rm -rf /opt/clash/subconverter_linux64.tar.gz
-cat >> /opt/clash/subconverter/generate.ini <<EOF
-[freewhole]
-path=../config.yaml
-target=clash
-url=https://sub.qiduo.eu.org/link/xwm2ZoKsFGCFZa6X?mu=1
-EOF
-
-# service clash
-cat > /opt/clash/bin/start <<EOF
-#!/bin/bash
-
-PIDFILE=/opt/clash/log/clash.pid
-if [ -f \$PIDFILE ]
-then
-  kill -9 \$(cat \$PIDFILE)
-fi
-
-echo \$\$ > \$PIDFILE
-
-/opt/clash/subconverter/subconverter -g --artifact "freewhole"
-
-/opt/clash/bin/clash -d /opt/clash | tee /opt/clash/log/clash.log
-
-EOF
-chmod +x /opt/clash/bin/start
-
-cat > /opt/clash/bin/stop <<EOF
-#!/bin/bash
-
-PIDFILE=/opt/clash/log/clash.pid
-if [ -f \$PIDFILE ]
-then
-  kill -9 \$(cat \$PIDFILE)
-fi
-EOF
-chmod +x /opt/clash/bin/stop
-
-cat > /opt/clash/bin/clash.service <<EOF
-[Unit]
-[Service]
-User=root
-Group=root
-ExecStart=/opt/clash/bin/start
-ExecStop=/opt/clash/bin/stop
-TimeoutSec=0
-StandardOutput=tty
-RemainAfterExit=yes
-[Install]
-WantedBy=multi-user.target
-EOF
-
-/bin/cp /opt/clash/bin/clash.service /etc/systemd/system/clash.service
-systemctl start clash
-systemctl enable clash
-
-# 定时更新订阅
-(echo "0 1 * * * systemctl restart clash" ; crontab -l) | crontab
-echo "==========================Done.======================="
-
+echo "=================Done.====================="
 
 
 echo "=======================安装证书管理器================="
 yum install snapd -y
 systemctl enable --now snapd.socket
+echo "waiting snapd starting..."
+sleep 30 # 立即安装core会失败
 ln -s /var/lib/snapd/snap /snap
 snap install core && snap refresh core
 snap install --classic certbot
@@ -165,96 +83,890 @@ snap connect certbot:plugin certbot-dns-aliyun
 
 mkdir /etc/letsencrypt
 cat > /etc/letsencrypt/aliyun-credentials.ini <<EOF
-dns_aliyun_access_key=$1
-dns_aliyun_access_key_secret=$2
+dns_aliyun_access_key=$RAM_KEY
+dns_aliyun_access_key_secret=$RAM_SECRET
 EOF
 chmod 600 /etc/letsencrypt/aliyun-credentials.ini
 
-certbot -n --email operator@ouxxa.com --agree-tos certonly -a dns-aliyun --dns-aliyun-credentials /etc/letsencrypt/aliyun-credentials.ini -d it.ouxxa.com -d "*.it.ouxxa.com"
+certbot -n --email operator@ouxxa.com --agree-tos certonly -a dns-aliyun --dns-aliyun-credentials /etc/letsencrypt/aliyun-credentials.ini -d $PROFILE.it.$ORG_DOMAIN_NAME -d "*.$PROFILE.it.$ORG_DOMAIN_NAME"
 certbot renew --dry-run
 
 systemctl list-timers
 echo "==========================Done.======================="
 
 
-echo "=======================安装jumpserver================="
-# 
-tar -xzvf ./packages/jumpserver/jumpserver-offline-installer-v2.27.0-amd64-113.tar.gz
-mv ./jumpserver-offline-installer-v2.27.0-amd64-113 /opt/jumpserver
-/bin/cp ./packages/jumpserver/config-example.txt /opt/jumpserver/config-example.txt
-/opt/jumpserver/jmsctl.sh install
-/opt/jumpserver/jmsctl.sh start
-echo "===========================Done.======================"
+echo "===============安装配置docker===================="
+tee /etc/yum.repos.d/docker.repo <<-'EOF'
+[docker-ce-stable]
+name=Docker CE Stable - $basearch
+baseurl=https://download.docker.com/linux/centos/7/$basearch/stable
+gpgcheck=1
+enabled=1
+gpgkey=https://download.docker.com/linux/centos/gpg
+EOF
+
+yum -y install docker-ce docker-ce-cli
+systemctl enable docker && systemctl start docker
+
+touch /etc/docker/daemon.json
+tee /etc/docker/daemon.json <<-'EOF'
+{ "log-opts": { "max-size": "5m", "max-file": "3" }, "exec-opts": ["native.cgroupdriver=systemd"] }
+EOF
+
+systemctl daemon-reload
+systemctl restart docker
+
+docker info
+docker version
+echo "===================Done.========================"
 
 
-echo "=============安装nexus=============="
-docker pull sonatype/nexus3:3.63.0
-mkdir -p /opt/nexus3/etc
+echo "===============安装配置nginx===================="
+tee /etc/yum.repos.d/nginx.repo <<-'EOF'
+[nginx-stable]
+name=nginx stable repo
+baseurl=http://nginx.org/packages/centos/$releasever/$basearch/
+gpgcheck=1
+enabled=1
+gpgkey=https://nginx.org/keys/nginx_signing.key
+module_hotfixes=true
+EOF
+
+yum install -y nginx
+
+rm -rf /etc/nginx/conf.d/default.conf
+
+cat > /etc/nginx/conf.d/default.conf <<EOF
+server {
+    listen 80 default;
+    return 404;
+}
+
+server {
+    listen 443 default;
+    return 404;
+
+    ssl_certificate      /etc/letsencrypt/live/$PROFILE.it.$ORG_DOMAIN_NAME/cert.pem;
+    ssl_certificate_key  /etc/letsencrypt/live/$PROFILE.it.$ORG_DOMAIN_NAME/privkey.pem;
+}
+EOF
+
+systemctl start nginx
+systemctl enable nginx
+echo "===================Done.======================="
+
+
+echo "=================安装配置openvpn================="
+yum install -y openvpn
+
+mkdir -p /opt/openvpn
+mkdir -p /opt/openvpn-client
+
+docker run -v /opt/openvpn:/etc/openvpn --rm kylemanna/openvpn ovpn_genconfig -u tcp://$IT_EIP -s 10.255.255.0/24 -b -d -D
+# todo expect自动输入
+docker run -v /opt/openvpn:/etc/openvpn --rm -it kylemanna/openvpn ovpn_initpki # 需要五次输入，ca密码-ca密码确认-cn域名-ca密码-ca密码
+
+cat > /opt/openvpn/server.conf <<EOF
+port 1194
+proto tcp
+dev tun
+ca /opt/openvpn/pki/ca.crt
+cert /opt/openvpn/pki/issued/$IT_EIP.crt
+key /opt/openvpn/pki/private/$IT_EIP.key
+dh /opt/openvpn/pki/dh.pem
+server 10.255.255.0 255.255.255.0
+ifconfig-pool-persist /opt/openvpn/ipp.txt
+push "route $VPC_SUBNET"
+push "route 100.100.2.128 255.255.255.128"
+keepalive 10 120
+tls-auth /opt/openvpn/pki/ta.key 0
+cipher AES-256-CBC
+persist-key
+persist-tun
+status /opt/openvpn/openvpn-status.log
+verb 3
+;explicit-exit-notify 1
+EOF
+
+tee /opt/openvpn/openvpn.service <<-'EOF'
+[Unit]
+Description=OpenVPN Robust And Highly Flexible Tunneling Application On %I
+After=network.target
+[Service]
+Type=notify
+PrivateTmp=true
+ExecStart=/usr/sbin/openvpn --cd /opt/openvpn --config server.conf
+[Install]
+WantedBy=multi-user.target
+EOF
+/bin/cp /opt/openvpn/openvpn.service /etc/systemd/system/openvpn.service
+systemctl enable openvpn
+systemctl start openvpn
+
+# todo expect自动输入
+docker run -v /opt/openvpn:/etc/openvpn --rm -it kylemanna/openvpn easyrsa build-client-full $ORG_DOMAIN nopass # 需要一次输入
+docker run -v /opt/openvpn:/etc/openvpn --rm kylemanna/openvpn ovpn_getclient $ORG_DOMAIN > /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
+echo cipher AES-256-CBC >> /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
+echo link-mtu 1559 >> /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
+echo dhcp-option DNS 100.100.2.136 >> /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
+echo dhcp-option DNS 100.100.2.138 >> /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
+echo "=====================Done.======================"
+
+
+echo "===========安装代理仓库(nginx + nexus3)==========="
+docker pull sonatype/nexus3:$NEXUS3_TAG
+
+mkdir -p /opt/sonatype/nexus/conf
+mkdir -p /opt/sonatype/nexus-data/etc/logback
+
+tee /opt/sonatype/nexus-data/etc/nexus.properties <<-'EOF'
+nexus.scripts.allowCreation=true
+EOF
+
+tee /opt/sonatype/nexus-data/etc/logback/logback.xml <<-'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+    <resetJUL>true</resetJUL>
+  </contextListener>
+
+  <jmxConfigurator/>
+
+  <appender name="osgi" class="org.ops4j.pax.logging.logback.internal.bridges.PaxAppenderDelegate">
+    <filter class="org.sonatype.nexus.pax.logging.NexusLogFilter" />
+  </appender>
+
+  <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+    <filter class="org.sonatype.nexus.pax.logging.NexusLogFilter" />
+    <encoder>
+      <pattern>%d{"yyyy-MM-dd HH:mm:ss,SSSZ"} %-5p [%thread] %mdc{userId:-*SYSTEM} %c - %m%n</pattern>
+    </encoder>
+  </appender>
+
+  <appender name="logfile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <File>${karaf.data}/log/nexus.log</File>
+    <Append>true</Append>
+    <encoder class="org.sonatype.nexus.pax.logging.NexusLayoutEncoder">
+      <pattern>%d{"yyyy-MM-dd HH:mm:ss,SSSZ"} %-5p [%thread] %node %mdc{userId:-*SYSTEM} %c - %m%n</pattern>
+    </encoder>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${karaf.data}/log/nexus-%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+      <maxHistory>{{ .Values.logback.maxHistory }}</maxHistory>
+    </rollingPolicy>
+    <filter class="org.sonatype.nexus.pax.logging.NexusLogFilter" />
+  </appender>
+
+  <appender name="clusterlogfile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <File>${karaf.data}/log/nexus_cluster.log</File>
+    <Append>true</Append>
+    <encoder class="org.sonatype.nexus.pax.logging.NexusLayoutEncoder">
+      <pattern>%d{"yyyy-MM-dd HH:mm:ss,SSSZ"} %-5p [%thread] %node %mdc{userId:-*SYSTEM} %c - %m%n</pattern>
+    </encoder>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${karaf.data}/log/nexus_cluster-%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+      <maxHistory>{{ .Values.logback.maxHistory }}</maxHistory>
+    </rollingPolicy>
+    <filter class="org.sonatype.nexus.pax.logging.ClusterLogFilter" />
+  </appender>
+
+  <appender name="tasklogfile" class="ch.qos.logback.classic.sift.SiftingAppender">
+    <filter class="org.sonatype.nexus.pax.logging.TaskLogsFilter" />
+    <discriminator>
+      <key>taskIdAndDate</key>
+      <defaultValue>unknown</defaultValue>
+    </discriminator>
+    <sift>
+      <appender name="taskAppender" class="ch.qos.logback.core.FileAppender">
+        <file>${karaf.data}/log/tasks/${taskIdAndDate}.log</file>
+        <encoder class="org.sonatype.nexus.pax.logging.NexusLayoutEncoder">
+          <pattern>%d{"yyyy-MM-dd HH:mm:ss,SSSZ"} %-5p [%thread] %node %mdc{userId:-*SYSTEM} %c - %m%n</pattern>
+        </encoder>
+      </appender>
+    </sift>
+  </appender>
+
+  <appender name="auditlogfile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <File>${karaf.data}/log/audit/audit.log</File>
+    <Append>true</Append>
+    <encoder>
+      <pattern>%msg%n</pattern>
+    </encoder>
+    <filter class="org.sonatype.nexus.pax.logging.AuditLogFilter"/>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${karaf.data}/log/audit/audit-%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+      <maxHistory>{{ .Values.logback.maxHistory }}</maxHistory>
+    </rollingPolicy>
+  </appender>
+
+  <logger name="auditlog" additivity="false">
+    <appender-ref ref="auditlogfile"/>
+  </logger>
+
+  <appender name="metrics" class="org.sonatype.nexus.pax.logging.InstrumentedAppender"/>
+
+  <logger name="org.eclipse.jetty.webapp" level="INFO"/>
+  <logger name="org.eclipse.jetty.webapp.StandardDescriptorProcessor" level="WARN"/>
+
+  <logger name="org.apache.aries" level="WARN"/>
+  <logger name="org.apache.felix" level="WARN"/>
+  <logger name="org.apache.karaf" level="WARN"/>
+
+  <include file="${karaf.data}/etc/logback/logback-overrides.xml" optional="true"/>
+
+  <root level="${root.level:-INFO}">
+    <appender-ref ref="osgi"/>
+    <appender-ref ref="console"/>
+    <appender-ref ref="logfile"/>
+    <appender-ref ref="clusterlogfile"/>
+    <appender-ref ref="tasklogfile"/>
+    <appender-ref ref="metrics"/>
+  </root>
+</configuration>
+EOF
+
+tee /opt/sonatype/nexus-data/etc/logback/logback-access.xml <<-'EOF'
+<?xml version="1.0"?>
+<configuration>
+  <appender name="request.logfile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <File>${karaf.data}/log/request.log</File>
+    <Append>true</Append>
+    <encoder class="org.sonatype.nexus.pax.logging.AccessPatternLayoutEncoder">
+      <pattern>%clientHost %l %user [%date] "%requestURL" %statusCode %header{Content-Length} %bytesSent %elapsedTime "%header{User-Agent}" [%thread]</pattern>
+    </encoder>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${karaf.data}/log/request-%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+      <maxHistory>{{ .Values.logback.maxHistory }}</maxHistory>
+    </rollingPolicy>
+  </appender>
+
+  <appender-ref ref="request.logfile"/>
+</configuration>
+EOF
+
+tee /opt/sonatype/nexus/conf/anonymous-user.json <<-'EOF'
+{
+  "userId":"anonymous",
+  "firstName":"Anonymous",
+  "lastName":"User",
+  "emailAddress":"anonymous@example.org",
+  "source":"default",
+  "status":"active",
+  "roles":["nx-anonymous", "nx-metrics"],
+  "externalRoles":[]
+}
+EOF
+
+tee /opt/sonatype/nexus/conf/anonymous.json <<-'EOF'
+{
+  "enabled": true
+}
+EOF
+
+tee /opt/sonatype/nexus/conf/nx-metrics-role.json <<-'EOF'
+{
+  "id":"nx-metrics",
+  "source":"default",
+  "name":"nx-metrics",
+  "description":"Metrics Role",
+  "privileges":["nx-metrics-all"],
+  "roles":[]
+}
+EOF
+
+tee /opt/sonatype/nexus/conf/realms.json <<-'EOF'
+[
+  "NexusAuthenticatingRealm",
+  "DockerToken",
+  "NpmToken"
+]
+EOF
+
+tee /opt/sonatype/nexus/conf/docker-blobstore.json <<-'EOF'
+{
+  "name":"docker",
+  "path":"/nexus-data/blobs/docker",
+  "type":"file"
+}
+EOF
+
+tee /opt/sonatype/nexus/conf/maven-blobstore.json <<-'EOF'
+{
+  "name":"maven",
+  "path":"/nexus-data/blobs/maven",
+  "type":"file"
+}
+EOF
+
+tee /opt/sonatype/nexus/conf/npm-blobstore.json <<-'EOF'
+{
+  "name":"npm",
+  "path":"/nexus-data/blobs/npm",
+  "type":"file"
+}
+EOF
+
+tee /opt/sonatype/nexus/conf/000_docker_registry-repo.json <<-'EOF'
+{
+  "attributes": {
+  	"docker": {
+      "forceBasicAuth": false,
+      "v1Enabled": true
+  	},
+  	"proxy": {
+  	  "remoteUrl": "https://registry-1.docker.io"
+  	},
+    "dockerProxy": {
+      "indexType": "HUB"
+    },
+  	"storage":{
+  	  "blobStoreName": "docker",
+  	  "strictContentTypeValidation": false
+  	}
+  },
+  "name": "docker-registry-proxy",
+  "online": true,
+  "type": "docker-proxy"
+}
+EOF
+
+tee /opt/sonatype/nexus/conf/010_maven_aliyun-repo.json <<-'EOF'
+{
+  "attributes": {
+  	"maven": {
+  	  "versionPolicy": "MIXED",
+  	  "layoutPolicy": "PERMISSIVE"
+  	},
+  	"proxy": {
+  	  "remoteUrl": "https://maven.aliyun.com/repository/public"
+  	},
+  	"storage":{
+  	  "blobStoreName": "maven",
+  	  "strictContentTypeValidation": false
+  	}
+  },
+  "name": "maven-aliyun-proxy",
+  "online": true,
+  "type": "maven2-proxy"
+}
+EOF
+
+tee /opt/sonatype/nexus/conf/020_npm_taobao-repo.json <<-'EOF'
+{
+  "attributes": {
+  	"npm": {
+  	},
+  	"proxy": {
+  	  "remoteUrl": "https://registry.npm.taobao.org"
+  	},
+  	"storage":{
+  	  "blobStoreName": "npm",
+  	  "strictContentTypeValidation": false
+  	}
+  },
+  "name": "npm-taobao-proxy",
+  "online": true,
+  "type": "npm-proxy"
+}
+EOF
+
+tee /opt/sonatype/nexus/conf/100_docker_hub-repo.json <<-'EOF'
+{
+  "attributes": {
+  	"docker": {
+      "forceBasicAuth": false,
+      "v1Enabled": true
+  	},
+  	"group": {
+  	  "memberNames": ["docker-registry-proxy"]
+  	},
+  	"storage":{
+  	  "blobStoreName": "docker",
+  	  "strictContentTypeValidation": false
+  	}
+  },
+  "name": "docker-hub",
+  "online": true,
+  "type": "docker-group"
+}
+EOF
+
+tee /opt/sonatype/nexus/conf/110_maven_hub-repo.json <<-'EOF'
+{
+  "attributes": {
+  	"maven": {
+  	  "versionPolicy": "MIXED",
+  	  "layoutPolicy": "PERMISSIVE"
+  	},
+  	"group": {
+  	  "memberNames": ["maven-aliyun-proxy"]
+  	},
+  	"storage":{
+  	  "blobStoreName": "maven",
+  	  "strictContentTypeValidation": false
+  	}
+  },
+  "name": "maven-hub",
+  "online": true,
+  "type": "maven2-group"
+}
+EOF
+
+tee /opt/sonatype/nexus/conf/120_npm_hub-repo.json <<-'EOF'
+{
+  "attributes": {
+    "npm": {},
+  	"group": {
+  	  "memberNames": ["npm-taobao-proxy"]
+  	},
+  	"storage":{
+  	  "blobStoreName": "npm",
+  	  "strictContentTypeValidation": false
+  	}
+  },
+  "name": "npm-hub",
+  "online": true,
+  "type": "npm-group"
+}
+EOF
+
+tee /opt/sonatype/nexus/conf/configure.sh <<-'EOF'
+#!/usr/bin/env bash
+set -eu
+
+function error() {
+  msg="ERROR: $*"
+  >&2 echo "${msg}"
+  echo "${msg}" > "${TERMINATION_LOG}"
+  exit 1
+}
+
+TERMINATION_LOG="${TERMINATION_LOG:-/dev/termination-log}"
+nexus_host="http://localhost:8081"
+root_user="admin"
+base_dir="/opt/sonatype/nexus"
+out_file="/tmp/out.json"
+tmp_file="/tmp/tmp.json"
+
+echo "Configuring Nexus3..."
+
+root_password="${NEXUS_SECURITY_INITIAL_PASSWORD:-}"
+
+if [[ -z "${root_password:-}" ]]
+then
+  error "No root password was provided."
+fi
+
+while /bin/true
+do
+EOF
+tee -a /opt/sonatype/nexus/conf/configure.sh <<-'EOF'
+  if [[ "$(curl -s -o /dev/null -w "%{http_code}" "${nexus_host}/service/rest/v1/status")" -ne "200" ]]
+  then
+    echo "Waiting for Nexus..."
+    sleep 15
+    continue
+  fi
+
+  json_file="${base_dir}/conf/anonymous.json"
+  if [[ -f "${json_file}" ]]
+  then
+    echo "Updating anonymous access..."
+
+    status_code="$(curl -s -o /dev/null -w "%{http_code}" -X PUT -H 'Content-Type: application/json' -u "${root_user}:${root_password}" -d "@${json_file}" "${nexus_host}/service/rest/v1/security/anonymous")"
+    if [[ "${status_code}" -ne 200 ]]
+    then
+      error "Could not configure anonymous access."
+    fi
+
+    echo "Anonymous access configured."
+  fi
+
+  json_file="${base_dir}/conf/realms.json"
+  if [[ -f "${json_file}" ]]
+  then
+    echo "Updating realms..."
+
+    status_code="$(curl -s -o /dev/null -w "%{http_code}" -X PUT -H 'Content-Type: application/json' -u "${root_user}:${root_password}" -d "@${json_file}" "${nexus_host}/service/rest/v1/security/realms/active")"
+    if [[ "${status_code}" -ne 204 ]]
+    then
+      error "Could not configure realms."
+    fi
+
+    echo "Realms configured."
+  fi
+EOF
+tee -a /opt/sonatype/nexus/conf/configure.sh <<-'EOF'
+  for json_file in "${base_dir}"/conf/*-role.json
+  do
+    if [[ -f "${json_file}" ]]
+    then
+      id="$(grep -Pio '(?<="id":)\s*\"[^"]+\"' "${json_file}" | xargs)"
+      source="$(grep -Pio '(?<="source":)\s*\"[^"]+\"' "${json_file}" | xargs)"
+      echo "Updating role '${id}'..."
+
+      status_code=$(curl -s -o /dev/null -w "%{http_code}" -X GET -H 'Content-Type: application/json' -u "${root_user}:${root_password}" "${nexus_host}/service/rest/v1/security/roles/${id}?source=${source}")
+      if [[ "${status_code}" -eq 200 ]]
+      then
+        status_code="$(curl -s -o /dev/null -w "%{http_code}" -X PUT -H 'Content-Type: application/json' -u "${root_user}:${root_password}" -d "@${json_file}" "${nexus_host}/service/rest/v1/security/roles/${id}")"
+        if [[ "${status_code}" -ne 204 ]]
+        then
+          error "Could not configure role."
+        fi
+      else
+        status_code="$(curl -s -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' -u "${root_user}:${root_password}" -d "@${json_file}" "${nexus_host}/service/rest/v1/security/roles")"
+        if [[ "${status_code}" -ne 200 ]]
+        then
+          error "Could not configure role."
+        fi
+      fi
+
+      echo "Role configured."
+    fi
+  done
+
+  for json_file in "${base_dir}"/conf/*-user.json
+  do
+    if [[ -f "${json_file}" ]]
+    then
+      id="$(grep -Pio '(?<="userId":)\s*\"[^"]+\"' "${json_file}" | xargs)"
+      source="$(grep -Pio '(?<="source":)\s*\"[^"]+\"' "${json_file}" | xargs)"
+      echo "Updating user '${id}'..."
+
+      status_code=$(curl -s -o "${out_file}" -w "%{http_code}" -X GET -H 'Content-Type: application/json' -u "${root_user}:${root_password}" "${nexus_host}/service/rest/v1/security/users/?userId=${id}&source=${source}")
+      if [[ "${status_code}" -eq 200 ]] && [[ -n "$(grep -r 'userId' ${out_file} || true)" ]]
+      then
+        status_code="$(curl -s -o /dev/null -w "%{http_code}" -X PUT -H 'Content-Type: application/json' -u "${root_user}:${root_password}" -d "@${json_file}" "${nexus_host}/service/rest/v1/security/users/${id}")"
+        if [[ "${status_code}" -ne 204 ]]
+        then
+          error "Could not configure user."
+        fi
+      else
+        password="$(echo "${RANDOM}" | md5sum | head -c 20)"
+        sed "s/\"userId\"/\"password\":\"${password}\",\"userId\"/" "${json_file}" > "${tmp_file}"
+        json_file="${tmp_file}"
+
+        status_code="$(curl -s -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' -u "${root_user}:${root_password}" -d "@${json_file}" "${nexus_host}/service/rest/v1/security/users")"
+        if [[ "${status_code}" -ne 200 ]]
+        then
+          error "Could not configure user."
+        fi
+      fi
+
+      rm -f "${tmp_file}"
+      echo "User configured."
+    fi
+  done
+
+  json_file="${base_dir}/conf/anonymous-user.json"
+  if [[ -f "${json_file}" ]]
+  then
+    echo "Configuring anonymous user..."
+
+    status_code="$(curl -s -o /dev/null -w "%{http_code}" -X PUT -H 'Content-Type: application/json' -u "${root_user}:${root_password}" -d "@${json_file}" "${nexus_host}/service/rest/v1/security/users/anonymous")"
+    if [[ "${status_code}" -ne 204 ]]
+    then
+      error "Could not configure anonymous user."
+    fi
+
+    echo "Anonymous user configured."
+  fi
+
+  json_file="${base_dir}/conf/ldap.json"
+  if [[ -f "${json_file}" ]]
+  then
+    cp -f "${json_file}" "${tmp_file}"
+    json_file="${tmp_file}"
+
+    if [[ -f "${base_dir}/secret/ldap.password" ]]
+    then
+      ldap_password=$(cat "${base_dir}/secret/ldap.password" | sed 's|"|\\"|g;s|/|\\/|g')
+      sed -i "s/PASSWORD/${ldap_password}/g" "${json_file}"
+    fi
+
+    name="$(grep -Pio '(?<="name":)\s*\"[^"]+\"' "${json_file}" | xargs)"
+
+    status_code=$(curl -s -o "${out_file}" -w "%{http_code}" -X GET -H 'Content-Type: application/json' -u "${root_user}:${root_password}" "${nexus_host}/service/rest/v1/security/ldap/${name// /%20}")
+    if [[ "${status_code}" -eq 200 ]]
+    then
+      echo "Updating LDAP configuration for '${name}'..."
+
+      id="$(grep -Pio '(?<="id"\s:)\s*\"[^"]+\"' "${out_file}" | xargs)"
+      sed -i "s/{\"/{\"id\":\"${id}\",\"/g" "${json_file}"
+
+      status_code="$(curl -s -o /dev/null -w "%{http_code}" -X PUT -H 'Content-Type: application/json' -u "${root_user}:${root_password}" -d "@${json_file}" "${nexus_host}/service/rest/v1/security/ldap/${name// /%20}")"
+      if [[ "${status_code}" -ne 204 ]]
+      then
+        error "Could not configure LDAP."
+      fi
+    else
+      echo "Adding LDAP configuration for '${name}'..."
+
+      status_code="$(curl -s -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' -u "${root_user}:${root_password}" -d "@${json_file}" "${nexus_host}/service/rest/v1/security/ldap")"
+      if [[ "${status_code}" -ne 201 ]]
+      then
+        error "Could not configure LDAP."
+      fi
+    fi
+
+    rm -f "${json_file}"
+    echo "LDAP configured."
+  fi
+EOF
+tee -a /opt/sonatype/nexus/conf/configure.sh <<-'EOF'
+  for json_file in "${base_dir}"/conf/*-blobstore.json
+  do
+    if [[ -f "${json_file}" ]]
+    then
+      type="$(grep -Pio '(?<="type":)\s*\"[^"]+\"' "${json_file}" | head -1 | xargs)"
+      if [[ "${type}" = "s3" ]]
+      then
+        name="$(grep -Pio '(?<="name":)(\s*\"[^"]+\")(?=,"type":\"s3\")' "${json_file}" | xargs)"
+      else
+        name="$(grep -Pio '(?<="name":)\s*\"[^"]+\"' "${json_file}" | xargs)"
+      fi
+      echo "Updating blob store '${name}'..."
+
+      status_code=$(curl -s -o /dev/null -w "%{http_code}" -X GET -H 'Content-Type: application/json' -u "${root_user}:${root_password}" "${nexus_host}/service/rest/v1/blobstores/${type}/${name}")
+      if [[ "${status_code}" -eq 200 ]]
+      then
+        status_code="$(curl -s -o /dev/null -w "%{http_code}" -X PUT -H 'Content-Type: application/json' -u "${root_user}:${root_password}" -d "@${json_file}" "${nexus_host}/service/rest/v1/blobstores/${type}/${name}")"
+        if [[ "${status_code}" -ne 204 ]]
+        then
+          error "Could not configure blob store."
+        fi
+      else
+        status_code="$(curl -s -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' -u "${root_user}:${root_password}" -d "@${json_file}" "${nexus_host}/service/rest/v1/blobstores/${type}")"
+        if [[ "${status_code}" -ne 204 ]] && [[ "${status_code}" -ne 201 ]]
+        then
+          error "Could not configure blob store."
+        fi
+      fi
+
+      echo "Blob store configured."
+    fi
+  done
+
+  for script_file in "${base_dir}"/conf/*.groovy
+  do
+    echo "Updating script ${script_file}."
+
+    name="$(basename "${script_file}" .groovy)"
+    content="$(sed 's/\"/\\\"/g' "${script_file}" | sed ':a;N;$!ba;s/\n/\\n/g')"
+    data="{ \"name\": \"${name}\", \"type\": \"groovy\", \"content\": \"${content}\" }"
+
+    status_code=$(curl -s -o /dev/null -w "%{http_code}" -X GET -u "${root_user}:${root_password}" "${nexus_host}/service/rest/v1/script/${name}")
+    if [[ "${status_code}" -eq 200 ]]
+    then
+      status_code=$(curl -s -o /dev/null -w "%{http_code}" -X PUT -H 'Content-Type: application/json' -u "${root_user}:${root_password}" -d "${data}" "${nexus_host}/service/rest/v1/script/${name}")
+    else
+      status_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' -u "${root_user}:${root_password}" -d "${data}" "${nexus_host}/service/rest/v1/script")
+    fi
+
+    if [[ "${status_code}" -ne 204 ]]
+    then
+      error "Could not update script ${name}."
+    fi
+
+    echo "Script ${script_file} updated."
+  done
+EOF
+tee -a /opt/sonatype/nexus/conf/configure.sh <<-'EOF'
+  for json_file in "${base_dir}"/conf/*-cleanup.json
+  do
+    if [[ -f "${json_file}" ]]
+    then
+      echo "Configuring cleanup policy..."
+
+      status_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' -u "${root_user}:${root_password}" -d "@${json_file}" "${nexus_host}/service/rest/v1/script/cleanup/run")
+      if [[ "${status_code}" -ne 200 ]]
+      then
+        error "Could not set cleanup policy."
+      fi
+
+      echo "Cleanup policy configured."
+    fi
+  done
+
+  for json_file in "${base_dir}"/conf/*-repo.json
+  do
+    if [[ -f "${json_file}" ]]
+    then
+      echo "Configuring repo..."
+
+      cp -f "${json_file}" "${tmp_file}"
+      json_file="${tmp_file}"
+
+      repo_name="$(grep -Pio '(?<="name":)\s*\"[^"]+\"' "${json_file}" | xargs)"
+      repo_password_file="${base_dir}/secret/repo-credentials/${repo_name}"
+      if [[ -f "${repo_password_file}" ]]
+      then
+        repo_password="$(cat "${repo_password_file}")"
+        sed -i "s/PASSWORD/${repo_password}/g" "${json_file}"
+      fi
+
+      status_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' -u "${root_user}:${root_password}" -d "@${json_file}" "${nexus_host}/service/rest/v1/script/repo/run")
+      if [[ "${status_code}" -ne 200 ]]
+      then
+        error "Could not set repo."
+      fi
+
+      rm -f "${json_file}"
+      echo "Repo configured."
+    fi
+  done
+
+  for json_file in "${base_dir}"/conf/*-task.json
+  do
+    if [[ -f "${json_file}" ]]
+    then
+      status_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' -u "${root_user}:${root_password}" -d "@${json_file}" "${nexus_host}/service/rest/v1/script/task/run")
+      if [[ "${status_code}" -ne 200 ]]
+      then
+        error "Could not set task."
+      fi
+
+      echo "Task configured."
+    fi
+  done
+
+  echo "Nexus3 configured successfully!"
+  exit 0
+done
+EOF
+
+tee /opt/sonatype/nexus/conf/cleanup.groovy <<-'EOF'
+import org.sonatype.nexus.cleanup.storage.CleanupPolicy;
+import org.sonatype.nexus.cleanup.storage.CleanupPolicyStorage;
+import groovy.json.JsonSlurper
+
+def cleanupPolicyStorage = container.lookup(CleanupPolicyStorage.class.getName())
+
+def params = new JsonSlurper().parseText(args)
+
+if (cleanupPolicyStorage.exists(params.name)) {
+  def existingPolicy = cleanupPolicyStorage.get(params.name);
+  existingPolicy.setNotes(params.notes);
+  existingPolicy.setFormat(params.format);
+  existingPolicy.setMode(params.mode);
+  existingPolicy.setCriteria(params.criteria);
+  cleanupPolicyStorage.update(existingPolicy);
+} else {
+  def newPolicy = cleanupPolicyStorage.newCleanupPolicy()
+  newPolicy.setName(params.name)
+  newPolicy.setNotes(params.notes);
+  newPolicy.setFormat(params.format);
+  newPolicy.setMode(params.mode);
+  newPolicy.setCriteria(params.criteria);
+  cleanupPolicyStorage.add(newPolicy);
+}
+
+return true
+EOF
+
+tee /opt/sonatype/nexus/conf/repo.groovy <<-'EOF'
+import groovy.json.JsonSlurper
+import groovy.json.JsonOutput
+import org.sonatype.nexus.repository.config.Configuration
+
+def repositoryManager = repository.repositoryManager
+
+def params = new JsonSlurper().parseText(args)
+if (params.attributes?.cleanup?.policyName) {
+  params.attributes.cleanup.policyName = params.attributes.cleanup.policyName.toSet()
+}
+
+def existingRepository = repositoryManager.get(params.name)
+Configuration configuration
+if (existingRepository == null) {
+  configuration = repositoryManager.newConfiguration()
+  configuration.repositoryName = params.name
+  configuration.recipeName = params.type
+  configuration.online = params.online
+  configuration.attributes = params.attributes
+} else {
+  configuration = existingRepository.getConfiguration()
+  if (params.containsKey("type")) {
+    if (configuration.getRecipeName() != params.type) {
+      throw new Exception("Tried to change recipe for repo ${params.name} to ${params.type}")
+    }
+  }
+
+  configuration.setOnline(params.online)
+  if (params.containsKey("attributes")) {
+    configuration.setAttributes(params.attributes)
+  }
+}
+
+if (existingRepository == null) {
+  repositoryManager.create(configuration)
+} else {
+  repositoryManager.update(configuration)
+}
+
+return true
+EOF
+
+tee /opt/sonatype/nexus/conf/task.groovy <<-'EOF'
+import org.sonatype.nexus.scheduling.TaskConfiguration
+import org.sonatype.nexus.scheduling.TaskInfo
+import org.sonatype.nexus.scheduling.TaskScheduler
+import org.sonatype.nexus.scheduling.schedule.Schedule
+import groovy.json.JsonSlurper
+
+def taskScheduler = container.lookup(TaskScheduler.class.getName())
+
+def params = new JsonSlurper().parseText(args)
+
+def existingTask = taskScheduler.listsTasks().find { TaskInfo taskInfo ->
+  taskInfo.getName() == params.name
+}
+
+if (existingTask && !existingTask.remove()) {
+  throw new RuntimeException("Could not remove currently running task '${params.name}'")
+}
+
+def taskConfiguration = taskScheduler.createTaskConfigurationInstance(params.typeId)
+taskConfiguration.setName(params.name)
+params.attributes.each { key, value -> taskConfiguration.setString(key, value) }
+params.boolAttributes.each { key, value -> taskConfiguration.setBoolean(key, Boolean.valueOf(value)) }
+
+def schedule = taskScheduler.scheduleFactory.cron(new Date(), params.crontab)
+
+taskScheduler.scheduleTask(taskConfiguration, schedule)
+
+return true
+EOF
+
+chown 200:200 -R /opt/sonatype/nexus
+chown 200:200 -R /opt/sonatype/nexus-data
+chmod +x /opt/sonatype/nexus/conf/configure.sh
+
 docker run -dti \
     --name=nexus \
     --privileged=true \
     --restart=always \
+    -e NEXUS_SECURITY_INITIAL_PASSWORD=$PROXY_REPO_PASS  \
     -e INSTALL4J_ADD_VM_PARAMS="-Xms4G -Xmx4G -XX:MaxDirectMemorySize=6717M -Djava.util.prefs.userRoot=/nexus-data/" \
     -p 8088:8081 \
     -v /etc/localtime:/etc/localtime \
-    -v /opt/nexus3:/nexus-data \
-    -v 
-    sonatype/nexus3:3.63.0
+    -v /opt/sonatype/nexus/conf:/opt/sonatype/nexus/conf \
+    -v /opt/sonatype/nexus-data:/nexus-data \
+    sonatype/nexus3:$NEXUS3_TAG
 until curl -fs http://localhost:8088; do echo waiting for nexus...; sleep 5; done;
-docker exec -it nexus /nexus-data/conf/configure.sh 
-# todo 自动配置，admin账户, 开启匿名，blob和repo创建: maven-hub, npm-hub, docker-hub
-echo "================Done.==============="
+docker exec -it nexus /opt/sonatype/nexus/conf/configure.sh
 
-
-echo "=============安装nginx=============="
-yum install -y nginx
-
-tee /etc/nginx/conf.d/jumpserver.conf <<-'EOF'
+cat > /etc/nginx/conf.d/nexus.conf <<EOF
 server {
     listen 80;
-    server_name jms.it.ouxxa.com;
-    return 301 https://$server_name$request_uri;
+    server_name repo.$PROFILE.it.$ORG_DOMAIN_NAME;
+    return 301 https://\$server_name\$request_uri;
 }
 server {
     listen 443 ssl http2;
-    server_name          jms.it.ouxxa.com;
-    ssl_certificate      /etc/letsencrypt/live/it.ouxxa.com/cert.pem;
-    ssl_certificate_key  /etc/letsencrypt/live/it.ouxxa.com/privkey.pem;
-    ssl_session_timeout 1d;
-    ssl_session_cache shared:MozSSL:10m;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
-    ssl_protocols TLSv1.1 TLSv1.2;
-    add_header Strict-Transport-Security "max-age=63072000" always;
+    server_name repo.$PROFILE.it.$ORG_DOMAIN_NAME;
 
-    client_max_body_size 4096m;
-    location / {
-        proxy_pass http://localhost:81;
-        proxy_http_version 1.1;
-        proxy_buffering off;
-        proxy_request_buffering off;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $remote_addr;
-    }
-}
-EOF
-
-# server_name 云上为repo.prod/intgr.it.ouxxa.com
-# 证书位置也有变化. docker-hub仓库路径要与nexus3配置对应
-tee /etc/nginx/conf.d/nexus.conf <<-'EOF'
-server {
-    listen 80;
-    server_name repo.it.ouxxa.com;
-    return 301 https://$server_name$request_uri;
-}
-server {
-    listen 443 ssl http2;
-    server_name repo.it.ouxxa.com;
-
-    ssl_certificate      /etc/letsencrypt/live/it.ouxxa.com/cert.pem;
-    ssl_certificate_key  /etc/letsencrypt/live/it.ouxxa.com/privkey.pem;
+    ssl_certificate      /etc/letsencrypt/live/$PROFILE.it.ouxxa.com/cert.pem;
+    ssl_certificate_key  /etc/letsencrypt/live/$PROFILE.it.ouxxa.com/privkey.pem;
     ssl_session_timeout 1d;
     ssl_session_cache shared:MozSSL:10m;
     ssl_protocols TLSv1.1 TLSv1.2;
@@ -262,12 +974,12 @@ server {
     add_header Strict-Transport-Security "max-age=63072000" always;
 
     client_max_body_size 0;
-    chunked_transfer_encoding on;	
+    chunked_transfer_encoding on;
 
     location / {
-        proxy_set_header Host $host:$server_port;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host \$host:\$server_port;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto "https";
         proxy_pass http://127.0.0.1:8088/;
         proxy_connect_timeout 3600;
@@ -278,11 +990,11 @@ server {
     }
 
     location /v2 {
-        proxy_set_header Host $host:$server_port;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host \$host:\$server_port;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto "https";
-        proxy_pass http://127.0.0.1:8088/repository/docker-hub/$request_uri;
+        proxy_pass http://127.0.0.1:8088/repository/docker-hub/\$request_uri;
         proxy_connect_timeout 3600;
         proxy_send_timeout 3600;
         proxy_read_timeout 3600;
@@ -291,11 +1003,11 @@ server {
     }
 
     location /v1 {
-        proxy_set_header Host $host:$server_port;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host \$host:\$server_port;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto "https";
-        proxy_pass http://127.0.0.1:8088/repository/docker-hub/$request_uri;
+        proxy_pass http://127.0.0.1:8088/repository/docker-hub/\$request_uri;
         proxy_connect_timeout 3600;
         proxy_send_timeout 3600;
         proxy_read_timeout 3600;
@@ -305,25 +1017,5 @@ server {
 }
 EOF
 
-rm -rf /etc/nginx/conf.d/default.conf
-
-tee /etc/nginx/conf.d/default.conf <<-'EOF'
-server {
-    listen 80 default;
-    return 404;
-}
-
-server {
-    listen 443 default;
-    return 404;
-
-    ssl_certificate      /etc/letsencrypt/live/it.ouxxa.com/cert.pem;
-    ssl_certificate_key  /etc/letsencrypt/live/it.ouxxa.com/privkey.pem;
-}
-EOF
-
-systemctl start nginx
-systemctl enable nginx
-
-echo "================Done.==============="
-
+systemctl restart nginx
+echo "====================Done.======================"

@@ -1,8 +1,0 @@
-{
-  "id":"nx-metrics",
-  "source":"default",
-  "name":"nx-metrics",
-  "description":"Metrics Role",
-  "privileges":["nx-metrics-all"],
-  "roles":[]
-}
