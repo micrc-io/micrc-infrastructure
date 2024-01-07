@@ -192,6 +192,7 @@ tee /opt/openvpn/openvpn.service <<-'EOF'
 [Unit]
 Description=OpenVPN Robust And Highly Flexible Tunneling Application On %I
 After=network.target
+RequiresMountsFor=/opt
 [Service]
 Type=notify
 PrivateTmp=true
