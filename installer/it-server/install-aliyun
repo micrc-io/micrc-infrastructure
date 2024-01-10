@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # todo 账户创建后，其他配置可使用aliyun openapi自动化
-# 准备工作
+# 准备工作(aliyun控制台)
 # 1. 开通aliyun账户，实名认证并充值，创建域名，企业邮箱和云解析
 # 2. 创建名为operator@组织域名的RAM用户并授予管理员权限；为组织创建api RAM用户，授予DNS权限(用于cert-manager的DNS01校验)
 # 3. 创建组织级资源组，每个运营/集成地域分别创建VPC专网和交换机(每个可用区一个)
 # 4. 运营/集成地域每个VPC内分别创建私网DNS: prod/intgr.it.组织域名(如ouxxa.com)
-# 5. 每个组织VPC内分别创建两个NAS文件系统(IT NAS和CLUSTER NAS)，用于组织级IT服务器和组织级集群存储
-# 6. 为组织创建OSS存储桶，用于组织级软件包存储下载
+# 5. 每个组织VPC内创建NAS文件系统IT NAS，用于组织级IT服务器存储VPN网关配置和代理仓库数据
+# 6. 为组织创建OSS存储桶，用于组织级软件包存储和下载
 # 7. 每个组织VPC中创建ECS(4 * 16 + 40)，实例名为"组织名-IT"，将IT NAS文件系统挂载到/opt目录。创建私网DNS解析到服务器私网IP
 # 8. 每个组织VPC中添加自定义路由条目，名为"自建NAT网关"，0.0.0.0/0 下一跳为ECS IT服务器
 # 9. 调整ECS所在安全组规则，VPC网段内开放22、80、443端口，workbench网段(100.104.0.0/16)开放22端口，完全开放(0.0.0.0/0)1194端口，全部是TCP
@@ -24,14 +24,15 @@ NEXUS3_TAG=3.63.0
 echo "===============读取配置信息=============="
 ORG_DOMAIN=`cat ./owner.config | awk '{if($1 == "ORG_DOMAIN") print $2}'` # 组织域名称
 ORG_DOMAIN_NAME=`cat ./owner.config | awk '{if($1 == "ORG_DOMAIN_NAME") print $2}'` # 组织域名
+HTTP_PROXY=`cat ./owner.config | awk '{if($1 == "HTTP_PROXY") print $2}'` # http代理地址/端口127.0.0.1 7890
 RAM_KEY=`cat ./owner.config | awk '{if($1 == "RAM_KEY") print $2}'` # aliyun access key
 RAM_SECRET=`cat ./owner.config | awk '{if($1 == "RAM_SECRET") print $2}'` # aliyun key secret
 PROFILE=`cat ./owner.config | awk '{if($1 == "PROFILE") print $2}'` # 当前专网环境，生产或是集成prod/intgr
-IT_EIP=`cat ./owner.config | awk '{if($1 == "IT_EIP") print $2}'` # ECS-IT服务器EIP地址
 OPENVPN_PASS=`cat ./owner.config | awk '{if($1 == "OPENVPN_PASS") print $2}'` # OPENVPN的CA和管理员密码
+PROXY_REPO_PASS=`cat ./owner.config | awk '{if($1 == "PROXY_REPO_PASS") print $2}'` # 代理仓库管理密码
+IT_EIP=`cat ./owner.config | awk '{if($1 == "IT_EIP") print $2}'` # ECS-IT服务器EIP地址
 VPC_NAME_SUFFIX=`cat ./owner.config | awk '{if($1 == "VPC_NAME_SUFFIX") print $2}'` # VPC名称小写后缀vpc-1-production
 VPC_SUBNET=`cat ./owner.config | awk '{if($1 == "VPC_SUBNET") print $2}'` # VPC网段10.10.0.0 255.255.0.0
-PROXY_REPO_PASS=`cat ./owner.config | awk '{if($1 == "PROXY_REPO_PASS") print $2}'` # 代理仓库管理密码
 echo "================Done.=================="
 
 
@@ -241,6 +242,7 @@ systemctl start openvpn
 # todo expect自动输入
 docker run -v /opt/openvpn:/etc/openvpn --rm -it kylemanna/openvpn easyrsa build-client-full $ORG_DOMAIN nopass # 需要一次输入
 docker run -v /opt/openvpn:/etc/openvpn --rm kylemanna/openvpn ovpn_getclient $ORG_DOMAIN > /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
+echo $HTTP_PROXY >> /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
 echo auth-user-pass >> /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
 echo cipher AES-256-CBC >> /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn
 echo script-security 2 >> /opt/openvpn-client/aliyun-$ORG_DOMAIN-$VPC_NAME_SUFFIX.ovpn

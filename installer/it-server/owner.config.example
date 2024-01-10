@@ -1,5 +1,6 @@
 ORG_DOMAIN 			组织域名称 - ouxxa
 ORG_DOMAIN_NAME		组织域名 - ouxxa.com
+HTTP_PROXY          http代理地址/端口127.0.0.1 7890
 RAM_KEY			    阿里云组织级API RAM用户access-key
 RAM_SECRET		    阿里云组织级API RAM用户key-secret
 PROFILE             当前专网环境，生产或是集成prod/intgr
