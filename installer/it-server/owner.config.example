@@ -6,6 +6,7 @@ RAM_SECRET		    阿里云组织级API RAM用户key-secret
 PROFILE             当前专网环境，生产或是集成prod/intgr
 OPENVPN_PASS        OPENVPN的CA和管理员密码
 PROXY_REPO_PASS     代理仓库管理密码
+K8S_VERSION         要管理的k8s版本v1.26
 IT_EIP              ECS-IT服务器EIP地址
 VPC_NAME_SUFFIX     VPC名称小写后缀vpc-1-production
 VPC_SUBNET          VPC网段10.10.0.0 255.255.0.0

@@ -8,9 +8,9 @@
 # 4. 运营/集成地域每个VPC内分别创建私网DNS: prod/intgr.it.组织域名(如ouxxa.com)
 # 5. 每个组织VPC内创建NAS文件系统IT NAS，用于组织级IT服务器存储VPN网关配置和代理仓库数据
 # 6. 为组织创建OSS存储桶，用于组织级软件包存储和下载
-# 7. 每个组织VPC中创建ECS(4 * 16 + 40)，实例名为"组织名-IT"，将IT NAS文件系统挂载到/opt目录。创建私网DNS解析到服务器私网IP
+# 7. 每个组织VPC中创建ECS(4 * 16 + 40)并创建密钥对，实例名为"组织名-IT"，将IT NAS文件系统挂载到/opt目录。创建私网DNS解析到服务器私网IP
 # 8. 每个组织VPC中添加自定义路由条目，名为"自建NAT网关"，0.0.0.0/0 下一跳为ECS IT服务器
-# 9. 调整ECS所在安全组规则，VPC网段内开放22、80、443端口，workbench网段(100.104.0.0/16)开放22端口，完全开放(0.0.0.0/0)1194端口，全部是TCP
+# 9. 调整ECS所在安全组规则，VPC网段内开放ICMP(IPv4)以及22、80、443端口，workbench网段(100.104.0.0/16)开放22端口，完全开放(0.0.0.0/0)1194端口，全部是TCP
 # 10. 使用workbench进入ECS IT终端命令行(内网IP)，执行安装脚本自建NAT网关、OPENVPN网关、证书管理区和代理仓库(nginx + nexus3)
 
 echo "#######################################"
@@ -30,6 +30,7 @@ RAM_SECRET=`cat ./owner.config | awk '{if($1 == "RAM_SECRET") print $2}'` # aliy
 PROFILE=`cat ./owner.config | awk '{if($1 == "PROFILE") print $2}'` # 当前专网环境，生产或是集成prod/intgr
 OPENVPN_PASS=`cat ./owner.config | awk '{if($1 == "OPENVPN_PASS") print $2}'` # OPENVPN的CA和管理员密码
 PROXY_REPO_PASS=`cat ./owner.config | awk '{if($1 == "PROXY_REPO_PASS") print $2}'` # 代理仓库管理密码
+K8S_VERSION=`cat ./owner.config | awk '{if($1 == "K8S_VERSION") print $2}'` # 要管理的k8s版本1.26
 IT_EIP=`cat ./owner.config | awk '{if($1 == "IT_EIP") print $2}'` # ECS-IT服务器EIP地址
 VPC_NAME_SUFFIX=`cat ./owner.config | awk '{if($1 == "VPC_NAME_SUFFIX") print $2}'` # VPC名称小写后缀vpc-1-production
 VPC_SUBNET=`cat ./owner.config | awk '{if($1 == "VPC_SUBNET") print $2}'` # VPC网段10.10.0.0 255.255.0.0
@@ -66,6 +67,20 @@ echo "================Done.===================="
 echo "===============升级系统包===================="
 yum update -y
 yum install -y epel-release
+echo "=================Done.====================="
+
+
+echo "===============安装kubectl================="
+cat > /etc/yum.repos.d/kubernetes.repo <<EOF
+[kubernetes]
+name=Kubernetes
+baseurl=https://pkgs.k8s.io/core:/stable:/$K8S_VERSION/rpm/
+enabled=1
+gpgcheck=1
+gpgkey=https://pkgs.k8s.io/core:/stable:/$K8S_VERSION/rpm/repodata/repomd.xml.key
+EOF
+
+yum install -y kubectl
 echo "=================Done.====================="
 
 
