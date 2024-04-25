@@ -29,7 +29,7 @@ jenkins:
             idleMinutes: 0
             containers:
             - name: "micrc"
-              image: "micrc/builder-agent:main"
+              image: "micrc/builder-agent:latest"
               command: "cat"
               args: ""
               ttyEnabled: true

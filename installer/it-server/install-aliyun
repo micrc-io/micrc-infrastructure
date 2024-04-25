@@ -5,7 +5,7 @@
 # 1. 开通aliyun账户，实名认证并充值，创建域名，企业邮箱和云解析
 # 2. 创建名为operator@组织域名的RAM用户并授予管理员权限；为组织创建api RAM用户，授予DNS权限(用于cert-manager的DNS01校验)
 # 3. 创建组织级资源组，每个运营/集成地域分别创建VPC专网和交换机(每个可用区一个)
-# 4. 运营/集成地域每个VPC内分别创建私网DNS: prod/intgr.it.组织域名(如ouxxa.com)
+# 4. 运营/集成地域每个VPC内分别创建私网DNS并开启递归解析: 组织域名(如ouxxa.com)
 # 5. 每个组织VPC内创建NAS文件系统IT NAS，用于组织级IT服务器存储VPN网关配置和代理仓库数据
 # 6. 为组织创建OSS存储桶，用于组织级软件包存储和下载
 # 7. 每个组织VPC中创建ECS(4 * 16 + 40)并创建密钥对，实例名为"组织名-IT"，将IT NAS文件系统挂载到/opt目录。创建私网DNS解析到服务器私网IP
@@ -70,7 +70,7 @@ yum install -y epel-release
 echo "=================Done.====================="
 
 
-echo "===============安装kubectl================="
+echo "===============安装kubectl和helm================="
 cat > /etc/yum.repos.d/kubernetes.repo <<EOF
 [kubernetes]
 name=Kubernetes
@@ -80,17 +80,19 @@ gpgcheck=1
 gpgkey=https://pkgs.k8s.io/core:/stable:/$K8S_VERSION/rpm/repodata/repomd.xml.key
 EOF
 
-yum install -y kubectl
-echo "=================Done.====================="
-
-
-echo "=======================安装证书管理器================="
 yum install snapd -y
 systemctl enable --now snapd.socket
 echo "waiting snapd starting..."
 sleep 30 # 立即安装core会失败
 ln -s /var/lib/snapd/snap /snap
 snap install core && snap refresh core
+
+yum install -y kubectl
+snap install helm --classic
+echo "=================Done.====================="
+
+
+echo "=======================安装证书管理器================="
 snap install --classic certbot
 ln -s /snap/bin/certbot /usr/bin/certbot
 snap set certbot trust-plugin-with-root=ok
