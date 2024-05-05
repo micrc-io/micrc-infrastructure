@@ -49,8 +49,8 @@ RUN set -o errexit -o nounset \
         unzip \
 #        \
 #        bzr \
-        git \
-        git-lfs
+        git
+#        git-lfs
 #        mercurial \
 #        openssh-client \
 #        subversion \
