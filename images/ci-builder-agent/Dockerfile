@@ -42,7 +42,7 @@ VOLUME /home/gradle/.gradle
 WORKDIR /home/gradle
 
 RUN set -o errexit -o nounset \
-    && yum update -y \
+    && yum update --nogpgcheck -y \
     && yum install -y \
         wget \
         vim \
