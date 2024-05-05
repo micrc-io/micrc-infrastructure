@@ -179,7 +179,7 @@ RUN set -o errexit -o nounset \
     && echo "Downloading helm" \
     && curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 \
     && chmod 700 get_helm.sh \
-    && echo "Install kustomize" \
+    && echo "Install helm" \
     && ./get_helm.sh \
     && echo "Testing helm installation" \
     && helm version
