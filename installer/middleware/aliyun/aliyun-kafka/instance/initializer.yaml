@@ -1,0 +1,148 @@
+---
+datetime: '2024-05-04 20:31:03'
+product: alikafka
+region: us-east-1 # 不能修改
+resourceGroupId: rg-aek2jxuszmirqqi # 不能修改
+vpc:
+  id: vpc-0xi1njxl2xa7q0lrcx96l # 不能修改
+  vSwitchIds: # 不能修改
+  - vsw-0xi7lvj2hi4nx9hj3163k
+  - vsw-0xil11ay0lw4wa3k6idad
+  clusterIps:
+  - 10.10.0.0/16
+instances:
+  public:
+    account:
+      password: 2wsx!QAZ@WSX
+    config:
+      create:
+        paidType: 1
+        specType: normal
+        ioMaxSpec: alikafka.hw.2xlarge # 最小规格
+        partitionNum: 0 # 最小额外分区数
+        diskSize: 500 # 最小500
+default:
+  create:
+    deployType: 5
+    diskType: '0'
+  deploy:
+    deployModule: vpc
+    config: '{"kafka.log.retention.hours": "480", "kafka.message.max.bytes": "10485760", "kafka.offsets.retention.minutes": "43200"}'
+  whitelist:
+    allowedListType: vpc
+    portRange: 9092/9092
+spec:
+  normal:
+    alikafka.hw.2xlarge:
+      partitionNum:
+        min: 1000
+        max: 4000
+      diskSize:
+        min: 500
+        max: 96000
+    alikafka.hw.3xlarge:
+      partitionNum:
+        min: 1000
+        max: 4200
+      diskSize:
+        min: 800
+        max: 96000
+    alikafka.hw.6xlarge:
+      partitionNum:
+        min: 1000
+        max: 4400
+      diskSize:
+        min: 1400
+        max: 96000
+    alikafka.hw.9xlarge:
+      partitionNum:
+        min: 1000
+        max: 4600
+      diskSize:
+        min: 2100
+        max: 96000
+    alikafka.hw.12xlarge:
+      partitionNum:
+        min: 1000
+        max: 4800
+      diskSize:
+        min: 2700
+        max: 96000
+  professional:
+    alikafka.hw.16xlarge:
+      partitionNum:
+        min: 2000
+        max: 5000
+      diskSize:
+        min: 3600
+        max: 96000
+    alikafka.hw.20xlarge:
+      partitionNum:
+        min: 2000
+        max: 6000
+      diskSize:
+        min: 4500
+        max: 96000
+    alikafka.hw.25xlarge:
+      partitionNum:
+        min: 2000
+        max: 7000
+      diskSize:
+        min: 5400
+        max: 96000
+    alikafka.hw.30xlarge:
+      partitionNum:
+        min: 2000
+        max: 8000
+      diskSize:
+        min: 3800
+        max: 96000
+    alikafka.hw.60xlarge:
+      partitionNum:
+        min: 2000
+        max: 9000
+      diskSize:
+        min: 10000
+        max: 96000
+    alikafka.hw.80xlarge:
+      partitionNum:
+        min: 2000
+        max: 10000
+      diskSize:
+        min: 14000
+        max: 96000
+    alikafka.hw.100xlarge:
+      partitionNum:
+        min: 3000
+        max: 12000
+      diskSize:
+        min: 18000
+        max: 96000
+    alikafka.hw.120xlarge:
+      partitionNum:
+        min: 3000
+        max: 14000
+      diskSize:
+        min: 20000
+        max: 96000
+    alikafka.hw.150xlarge:
+      partitionNum:
+        min: 3000
+        max: 16000
+      diskSize:
+        min: 27000
+        max: 96000
+    alikafka.hw.180xlarge:
+      partitionNum:
+        min: 3000
+        max: 18000
+      diskSize:
+        min: 33000
+        max: 96000
+    alikafka.hw.200xlarge:
+      partitionNum:
+        min: 3000
+        max: 20000
+      diskSize:
+        min: 37000
+        max: 96000

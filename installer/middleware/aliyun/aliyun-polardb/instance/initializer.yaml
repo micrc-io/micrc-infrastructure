@@ -1,0 +1,42 @@
+---
+datetime: '2024-05-05 04:05:39'
+product: polardb
+region: us-east-1 # 不能修改
+zone: us-east-1b # 不能修改
+resourceGroupId: rg-aek2jxuszmirqqi # 不能修改
+vpc:
+  id: vpc-0xi1njxl2xa7q0lrcx96l # 不能修改
+  vSwitchIds: # 不能修改
+  - vsw-0xil11ay0lw4wa3k6idad
+  clusterIps:
+  - 10.10.0.0/16
+instances:
+  public:
+    account:
+      password: 2wsx!QAZ@WSX
+    config:
+      scaleMin: 1
+      scaleMax: 16
+      scaleRoNumMin: 1
+      scaleRoNumMax: 4
+default:
+  create:
+    payType: Postpaid
+    DBNodeClass: polar.mysql.sl.small
+    DBType: MySQL
+    DBVersion: '8.0'
+    DBMinorVersion: '8.0.1'
+    serverlessType: AgileServerless
+    clusterNetworkType: VPC
+    defaultTimeZone: '+0:00'
+  whitelist:
+    modifyMode: Cover
+    DBClusterIPArrayName: default
+    whiteListType: IP
+spec:
+  scale:
+    min: 1
+    max: 32
+  scaleRoNum:
+    min: 0
+    max: 15

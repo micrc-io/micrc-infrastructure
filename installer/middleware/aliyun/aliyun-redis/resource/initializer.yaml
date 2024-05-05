@@ -1,0 +1,9 @@
+---
+datetime: '2024-05-05 21:58:03'
+product: r-kvstore
+region: us-east-1
+instances:
+  public:
+    security:
+      account:
+        password: 2wsx!QAZ@WSX

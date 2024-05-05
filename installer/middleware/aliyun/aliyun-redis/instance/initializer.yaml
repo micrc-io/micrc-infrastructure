@@ -1,0 +1,46 @@
+---
+datetime: '2024-05-05 21:58:03'
+product: r-kvstore
+region: us-east-1 # 不能修改
+zones: # 不能修改
+- us-east-1a
+- us-east-1b
+resourceGroupId: rg-aek2jxuszmirqqi # 不能修改
+vpc:
+  id: vpc-0xi1njxl2xa7q0lrcx96l # 不能修改
+  vSwitchIds: # 不能修改
+  - vsw-0xi7lvj2hi4nx9hj3163k
+  - vsw-0xil11ay0lw4wa3k6idad
+  clusterIps:
+  - 10.10.0.0/16
+instances:
+  public:
+    account:
+      password: 2wsx1qaz@WSX
+    config:
+      shardClass: redis.shard.with.proxy.small.ce
+      shardCount: 2
+default:
+  create:
+    chargeType: PostPaid
+    networkType: VPC
+    nodeType: MASTER_SLAVE
+    instanceType: Redis
+    engineVersion: '6.0'
+  whitelist:
+    modifyMode: Cover
+    securityIpGroupName: default
+spec:
+  shardCount:
+    increase: 32
+    min: 2
+    max: 128
+  shardClass:
+    redis.shard.with.proxy.small.ce: '1'
+    redis.shard.with.proxy.mid.ce: '2'
+    redis.shard.with.proxy.large.ce: '4'
+    redis.shard.with.proxy.xlarge.ce: '8'
+    redis.shard.with.proxy.2xlarge.ce: '16'
+    redis.shard.with.proxy.3xlarge.ce: '24'
+    redis.shard.with.proxy.4xlarge.ce: '32'
+    redis.shard.with.proxy.8xlarge.ce: '64'

@@ -1,2 +1,5 @@
 owner.config
+.accesskey
 .DS_Store
+
+node_modules

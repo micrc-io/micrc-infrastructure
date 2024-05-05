@@ -1,0 +1,14 @@
+---
+datetime: '2024-05-04 21:58:03'
+product: alikafka
+region: us-east-1
+instances:
+  public:
+    security:
+      account:
+        password: 2wsx!QAZ@WSX
+      topics:
+      - name: demo
+        partitionNum: 12
+      groups:
+      - name: demo

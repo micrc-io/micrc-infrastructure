@@ -1,0 +1,16 @@
+---
+datetime: '2024-05-05 17:58:03'
+product: polardb
+region: us-east-1
+instances:
+  public:
+    security:
+      account:
+        password: 2wsx!QAZ@WSX
+      databases:
+      - name: security
+default:
+  database:
+    characterSetName: utf8mb4
+    accountPrivilege: ReadWrite
+

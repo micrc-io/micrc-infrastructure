@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@alicloud/openapi-client": "^0.4.8",
+    "@alicloud/r-kvstore20150101": "^3.0.1",
+    "@alicloud/tea-typescript": "^1.8.0",
+    "@alicloud/tea-util": "^1.4.7",
+    "js-yaml": "^4.1.0"
+  }
+}
