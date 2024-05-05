@@ -64,11 +64,11 @@ RUN set -o errexit -o nounset \
 
 
 # 如使用挂载宿主机Docker方案,则无需安装docker
-#RUN set -o errexit -o nounset \
-#    && echo "install docker" \
-#    && dnf install -y yum-utils \
-#    && dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo \
-#    && dnf -y install docker-ce docker-ce-cli containerd.io
+RUN set -o errexit -o nounset \
+   && echo "install docker" \
+   && dnf install -y yum-utils \
+   && dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo \
+   && dnf -y install docker-ce docker-ce-cli containerd.io
 
 
 ENV GRADLE_VERSION=7.6
@@ -171,4 +171,15 @@ RUN set -o errexit -o nounset \
     && tar -zxvf kustomize.tar.gz \
     && echo "Install kustomize" \
     && install kustomize /usr/bin/ \
+    && echo "Testing kustomize installation" \
+    && kustomize version
 
+# helm
+RUN set -o errexit -o nounset \
+    && echo "Downloading helm" \
+    && curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 \
+    && chmod 700 get_helm.sh \
+    && echo "Install kustomize" \
+    && ./get_helm.sh \
+    && echo "Testing helm installation" \
+    && helm version
