@@ -1,0 +1,1981 @@
+# kube-system
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-ack-node-local-dns-admission-controller
+  namespace: kube-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ack-node-local-dns-admission-controller
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-alicloud-monitor-controller
+  namespace: kube-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: alicloud-monitor-controller
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-cluster-autoscaler
+  namespace: kube-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cluster-autoscaler
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-coredns
+  namespace: kube-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: coredns
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-csi-provisioner
+  namespace: kube-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: csi-provisioner
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-metrics-server
+  namespace: kube-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: metrics-server
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-security-inspector
+  namespace: kube-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: security-inspector
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-storage-auto-expander
+  namespace: kube-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: storage-auto-expander
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-storage-cnfs
+  namespace: kube-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: storage-cnfs
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-storage-controller
+  namespace: kube-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: storage-controller
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-storage-monitor
+  namespace: kube-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: storage-monitor
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-storage-operator
+  namespace: kube-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: storage-operator
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-reflector
+  namespace: kube-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: reflector
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-sealed-secrets-controller
+  namespace: kube-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sealed-secrets-controller
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-snapshot-controller
+  namespace: kube-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: snapshot-controller
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+# kruise-system
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-ack-kruise
+  namespace: kruise-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ack-kruise
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-kruise-rollout-controller-manager
+  namespace: kruise-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: kruise-rollout-controller-manager
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+# cert-manager
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cert-manager
+  labels:
+    kubesphere.io/workspace: system-workspace
+    istio-injection: disabled
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-cert-manager
+  namespace: cert-manager
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cert-manager
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-cert-manager-webhook
+  namespace: cert-manager
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cert-manager-webhook
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-cert-manager-cainjector
+  namespace: cert-manager
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cert-manager-cainjector
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-alidns-webhook
+  namespace: cert-manager
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: alidns-webhook
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+# istio-operator
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-operator
+  labels:
+    kubesphere.io/workspace: system-workspace
+    istio-injection: disabled
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-istio-operator
+  namespace: istio-operator
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: istio-operator
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+# kubesphere-system
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubesphere-system
+  labels:
+    kubesphere.io/workspace: system-workspace
+    istio-injection: disabled
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-ks-apiserver
+  namespace: kubesphere-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ks-apiserver
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-ks-console
+  namespace: kubesphere-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ks-console
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-ks-controller-manager
+  namespace: kubesphere-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ks-controller-manager
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-minio
+  namespace: kubesphere-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: minio
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-ks-installer
+  namespace: kubesphere-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ks-installer
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-kubesphere-ingress-gateway
+  namespace: kubesphere-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: kubesphere-ingress-gateway
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-openldap
+  namespace: kubesphere-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: openldap
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+# istio-system
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-system
+  labels:
+    kubesphere.io/workspace: system-workspace
+    istio-injection: disabled
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-istiod-1-14-6
+  namespace: istio-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: istiod-1-14-6
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-jaeger-operator
+  namespace: istio-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: jaeger-operator
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-kiali-operator
+  namespace: istio-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: kiali-operator
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-istio-ingressgateway
+  namespace: istio-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: istio-ingressgateway
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-kiali
+  namespace: istio-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: kiali
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+# argocd
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+  labels:
+    kubesphere.io/workspace: system-workspace
+    istio-injection: disabled
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-devops-argocd-applicationset-controller
+  namespace: argocd
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: devops-argocd-applicationset-controller
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-devops-argocd-dex-server
+  namespace: argocd
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: devops-argocd-dex-server
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-devops-argocd-notifications-controller
+  namespace: argocd
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: devops-argocd-notifications-controller
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-devops-argocd-redis
+  namespace: argocd
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: devops-argocd-redis
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-devops-argocd-repo-server
+  namespace: argocd
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: devops-argocd-repo-server
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-devops-argocd-server
+  namespace: argocd
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: devops-argocd-server
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-devops-argocd-application-controller
+  namespace: argocd
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: devops-argocd-application-controller
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+# kubesphere-monitoring-system
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubesphere-monitoring-system
+  labels:
+    kubesphere.io/workspace: system-workspace
+    istio-injection: disabled
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-prometheus-operator
+  namespace: kubesphere-monitoring-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: prometheus-operator
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-notification-manager-operator
+  namespace: kubesphere-monitoring-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: notification-manager-operator
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-kube-state-metrics
+  namespace: kubesphere-monitoring-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: kube-state-metrics
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-notification-manager-deployment
+  namespace: kubesphere-monitoring-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: notification-manager-deployment
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-alertmanager-main
+  namespace: kubesphere-monitoring-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: alertmanager-main
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-prometheus-k8s
+  namespace: kubesphere-monitoring-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: prometheus-k8s
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-thanos-ruler-kubesphere
+  namespace: kubesphere-monitoring-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: thanos-ruler-kubesphere
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+# kubesphere-logging-system
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubesphere-logging-system
+  labels:
+    kubesphere.io/workspace: system-workspace
+    istio-injection: disabled
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-fluentbit-operator
+  namespace: kubesphere-logging-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: fluentbit-operator
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-ks-events-operator
+  namespace: kubesphere-logging-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ks-events-operator
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-kube-auditing-operator
+  namespace: kubesphere-logging-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: kube-auditing-operator
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-ks-events-exporter
+  namespace: kubesphere-logging-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ks-events-exporter
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-ks-events-ruler
+  namespace: kubesphere-logging-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ks-events-ruler
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-kube-auditing-webhook-deploy
+  namespace: kubesphere-logging-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: kube-auditing-webhook-deploy
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-logsidecar-injector-deploy
+  namespace: kubesphere-logging-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: logsidecar-injector-deploy
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-opensearch-cluster-master
+  namespace: kubesphere-logging-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: opensearch-cluster-master
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-opensearch-cluster-data
+  namespace: kubesphere-logging-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: opensearch-cluster-data
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+# kubesphere-devops-system
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubesphere-devops-system
+  labels:
+    kubesphere.io/workspace: system-workspace
+    istio-injection: disabled
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-devops-apiserver
+  namespace: kubesphere-devops-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: devops-apiserver
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-devops-controller
+  namespace: kubesphere-devops-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: devops-controller
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-devops-jenkins
+  namespace: kubesphere-devops-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: devops-jenkins
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-s2ioperator
+  namespace: kubesphere-devops-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: s2ioperator
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+# kubesphere-controls-system
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubesphere-controls-system
+  labels:
+    kubesphere.io/workspace: system-workspace
+    istio-injection: disabled
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-kubectl-admin
+  namespace: kubesphere-controls-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: kubectl-admin
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-default-http-backend
+  namespace: kubesphere-controls-system
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: default-http-backend
+  subsets:
+    - maxReplicas: 1
+      name: subset-minimal
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - minimal
+    - name: subset-elastic
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic

@@ -1,0 +1,94 @@
+---
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  namespace: kubesphere-system
+  name: kubesphere-ingress-gateway
+spec:
+  profile: empty
+  tag: 1.14.6
+  components:
+    ingressGateways:
+      - name: kubesphere-ingress-gateway
+        namespace: kubesphere-system
+        enabled: true
+        tag: 1.14.6
+        label:
+          istio: ingressgateway-kubesphere
+          app: istio-ingressgateway-kubesphere
+        k8s:
+          env:
+          - name: CA_ADDR
+            value: "istiod-1-14-6.istio-system.svc:15012"
+          - name: PROXY_CONFIG
+            value: "{\"discoveryAddress\":\"istiod-1-14-6.istio-system.svc:15012\",\"tracing\":{\"zipkin\":{\"address\":\"jaeger-collector.istio-system.svc:9411\"}}}"
+          hpaSpec:
+            minReplicas: 2
+          service:
+            ports:
+            - name: http
+              protocol: TCP
+              port: 80
+              targetPort: 8080
+            - name: https
+              protocol: TCP
+              port: 443
+              targetPort: 8443
+            type: LoadBalancer
+            externalTrafficPolicy: Local
+          serviceAnnotations:
+            service.beta.kubernetes.io/alibaba-cloud-loadbalancer-name: "ouxxa-slb-1-production"
+            service.beta.kubernetes.io/alibaba-cloud-loadbalancer-resource-group-id: "rg-aek25rxcvmdwjfq"
+            service.beta.kubernetes.io/alibaba-cloud-loadbalancer-spec: "slb.s1.small"
+            service.beta.kubernetes.io/alibaba-cloud-loadbalancer-delete-protection: "on"
+            service.beta.kubernetes.io/alibaba-cloud-loadbalancer-modification-protection: "ConsoleProtection"
+            service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: "intranet"
+            service.beta.kubernetes.io/alibaba-cloud-loadbalancer-vswitch-id: "vsw-0xissdl9b5jcoye9q8ed8"
+            service.beta.kubernetes.io/alibaba-cloud-loadbalancer-ip: "10.10.0.10"
+            service.beta.kubernetes.io/alibaba-cloud-loadbalancer-scheduler: "wrr"
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: ouxxa-cluster-gateway
+  namespace: kubesphere-system
+spec:
+  selector:
+    istio: ingressgateway-kubesphere
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "cluster.prod.it.ouxxa.com"
+    tls:
+      httpsRedirect: true
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    hosts:
+    - "cluster.prod.it.ouxxa.com"
+    tls:
+      mode: SIMPLE
+      credentialName: ouxxa-cluster-1-production-ks-console-tls
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: ks-console-vs
+  namespace: kubesphere-system
+spec:
+  hosts:
+  - "cluster.prod.it.ouxxa.com"
+  gateways:
+  - ouxxa-cluster-gateway
+  http:
+  - route:
+    - destination:
+        host: ks-console
+        port:
+          number: 80

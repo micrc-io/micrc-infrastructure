@@ -521,20 +521,39 @@ tee /opt/sonatype/nexus/conf/010_maven_aliyun-repo.json <<-'EOF'
 }
 EOF
 
-tee /opt/sonatype/nexus/conf/020_npm_taobao-repo.json <<-'EOF'
+tee /opt/sonatype/nexus/conf/020_npm_aliyun-repo.json <<-'EOF'
 {
   "attributes": {
   	"npm": {
   	},
   	"proxy": {
-  	  "remoteUrl": "https://registry.npm.taobao.org"
+  	  "remoteUrl": "https://registry.npmmirror.com"
   	},
   	"storage":{
   	  "blobStoreName": "npm",
   	  "strictContentTypeValidation": false
   	}
   },
-  "name": "npm-taobao-proxy",
+  "name": "npm-aliyun-proxy",
+  "online": true,
+  "type": "npm-proxy"
+}
+EOF
+
+tee /opt/sonatype/nexus/conf/021_npm_center-repo.json <<-'EOF'
+{
+  "attributes": {
+  	"npm": {
+  	},
+  	"proxy": {
+  	  "remoteUrl": "https://registry.npmjs.org"
+  	},
+  	"storage":{
+  	  "blobStoreName": "npm",
+  	  "strictContentTypeValidation": false
+  	}
+  },
+  "name": "npm-center-proxy",
   "online": true,
   "type": "npm-proxy"
 }
@@ -587,7 +606,7 @@ tee /opt/sonatype/nexus/conf/120_npm_hub-repo.json <<-'EOF'
   "attributes": {
     "npm": {},
   	"group": {
-  	  "memberNames": ["npm-taobao-proxy"]
+  	  "memberNames": ["npm-aliyun-proxy", "npm-center-proxy"]
   	},
   	"storage":{
   	  "blobStoreName": "npm",

@@ -25,83 +25,74 @@ ENV JAVA_HOME=/usr/lib/jvm/java-11-amazon-corretto
 # gradle 7.6
 # CMD ["gradle"]
 
-ENV GRADLE_HOME=/opt/gradle
+# ENV GRADLE_HOME=/opt/gradle
 
-RUN set -o errexit -o nounset \
-    && echo "Adding gradle user and group" \
-    && groupadd --system --gid 1000 gradle \
-    && useradd --system --gid gradle --uid 1000 --shell /bin/bash --create-home gradle \
-    && mkdir /home/gradle/.gradle \
-    && chown --recursive gradle:gradle /home/gradle \
-    \
-    && echo "Symlinking root Gradle cache to gradle Gradle cache" \
-    && ln --symbolic /home/gradle/.gradle /root/.gradle
+# RUN set -o errexit -o nounset \
+#     && echo "Adding gradle user and group" \
+#     && groupadd --system --gid 1000 gradle \
+#     && useradd --system --gid gradle --uid 1000 --shell /bin/bash --create-home gradle \
+#     && mkdir /home/gradle/.gradle \
+#     && chown --recursive gradle:gradle /home/gradle \
+#     \
+#     && echo "Symlinking root Gradle cache to gradle Gradle cache" \
+#     && ln --symbolic /home/gradle/.gradle /root/.gradle
 
-VOLUME /home/gradle/.gradle
+# VOLUME /home/gradle/.gradle
 
-WORKDIR /home/gradle
+# WORKDIR /home/gradle
 
 RUN set -o errexit -o nounset \
     && yum update --nogpgcheck -y \
     && yum install -y \
-        wget \
-        vim \
-        unzip \
-#        \
-#        bzr \
-        git
-#        git-lfs
-#        mercurial \
-#        openssh-client \
-#        subversion \
-#    \
-#    && echo "Testing VCSes" \
-#    && which bzr \
-#    && which git \
-#    && which git-lfs \
-#    && which hg \
-#    && which svn
+    wget \
+    vim \
+    unzip
+    # \
+    # bzr \
+    # git \
+    # git-lfs \
+    # mercurial \
+    # openssh-client \
+    # subversion \
+    # \
+    # && echo "Testing VCSes" \
+    # && which bzr \
+    # && which git \
+    # && which git-lfs \
+    # && which hg \
+    # && which svn
 
-
-# 如使用挂载宿主机Docker方案,则无需安装docker
-RUN set -o errexit -o nounset \
-   && echo "install docker" \
-   && dnf install -y yum-utils \
-   && dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo \
-   && dnf -y install docker-ce docker-ce-cli containerd.io
-
-
-ENV GRADLE_VERSION=7.6
+# ENV GRADLE_VERSION=7.6
 
 # ARG GRADLE_DOWNLOAD_SHA256=f6b8596b10cce501591e92f229816aa4046424f3b24d771751b06779d58c8ec4
 
-RUN set -o errexit -o nounset \
-    && echo "Downloading Gradle" \
-    && wget --no-verbose --output-document=gradle.zip "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
-    \
-    && echo "Checking download hash" \
-#     && echo "${GRADLE_DOWNLOAD_SHA256} *gradle.zip" | sha256sum --check - \
-    \
-    && echo "Installing Gradle" \
-    && unzip gradle.zip \
-    && rm gradle.zip \
-    && mv "gradle-${GRADLE_VERSION}" "${GRADLE_HOME}/" \
-    && ln --symbolic "${GRADLE_HOME}/bin/gradle" /usr/bin/gradle \
-    \
-    && echo "Testing Gradle installation" \
-    && gradle --version
+# RUN set -o errexit -o nounset \
+#     && echo "Downloading Gradle" \
+#     && wget --no-verbose --output-document=gradle.zip "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
+#     \
+#     && echo "Checking download hash" \
+# #     && echo "${GRADLE_DOWNLOAD_SHA256} *gradle.zip" | sha256sum --check - \
+#     \
+#     && echo "Installing Gradle" \
+#     && unzip gradle.zip \
+#     && rm gradle.zip \
+#     && mv "gradle-${GRADLE_VERSION}" "${GRADLE_HOME}/" \
+#     && ln --symbolic "${GRADLE_HOME}/bin/gradle" /usr/bin/gradle \
+#     \
+#     && echo "Testing Gradle installation" \
+#     && gradle --version
 
-ENV MAVEN_HOME /usr/share/maven
+# ENV MAVEN_HOME /usr/share/maven
 
-COPY --from=maven:3.9.1-eclipse-temurin-11 ${MAVEN_HOME} ${MAVEN_HOME}
-COPY --from=maven:3.9.1-eclipse-temurin-11 /usr/local/bin/mvn-entrypoint.sh /usr/local/bin/mvn-entrypoint.sh
-COPY --from=maven:3.9.1-eclipse-temurin-11 /usr/share/maven/ref/settings-docker.xml /usr/share/maven/ref/settings-docker.xml
+# COPY --from=maven:3.9.1-eclipse-temurin-11 ${MAVEN_HOME} ${MAVEN_HOME}
+# COPY --from=maven:3.9.1-eclipse-temurin-11 /usr/local/bin/mvn-entrypoint.sh /usr/local/bin/mvn-entrypoint.sh
+# COPY --from=maven:3.9.1-eclipse-temurin-11 /usr/share/maven/ref/settings-docker.xml /usr/share/maven/ref/settings-docker.xml
 
-RUN ln -s ${MAVEN_HOME}/bin/mvn /usr/bin/mvn
+# RUN ln -s ${MAVEN_HOME}/bin/mvn /usr/bin/mvn
 
-ARG MAVEN_VERSION=3.9.1
-ARG USER_HOME_DIR="/root"
-ENV MAVEN_CONFIG "$USER_HOME_DIR/.m2"
+# ARG MAVEN_VERSION=3.9.1
+# ARG USER_HOME_DIR="/root"
+# ENV MAVEN_CONFIG "$USER_HOME_DIR/.m2"
 
 
 # nodejs 18.14.2 npm 9.5.0
