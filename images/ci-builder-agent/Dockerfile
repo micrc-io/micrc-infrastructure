@@ -5,7 +5,7 @@ RUN set -o errexit -o nounset \
     && yum install -y \
     wget \
     vim \
-    unzip
+    unzip \
     \
     bzr \
     git
