@@ -6,9 +6,9 @@ RUN set -o errexit -o nounset \
     wget \
     vim \
     unzip
-    # \
-    # bzr \
-    # git \
+    \
+    bzr \
+    git
     # git-lfs \
     # mercurial \
     # openssh-client \
