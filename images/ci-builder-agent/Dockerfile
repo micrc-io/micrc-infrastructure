@@ -1,5 +1,32 @@
 FROM --platform=linux/amd64 almalinux:8.6
 
+RUN set -o errexit -o nounset \
+    && yum update --nogpgcheck -y \
+    && yum install -y \
+    wget \
+    vim \
+    unzip
+    # \
+    # bzr \
+    # git \
+    # git-lfs \
+    # mercurial \
+    # openssh-client \
+    # subversion \
+    # \
+    # && echo "Testing VCSes" \
+    # && which bzr \
+    # && which git \
+    # && which git-lfs \
+    # && which hg \
+    # && which svn
+
+RUN set -o errexit -o nounset \
+    && echo "install docker cli" \
+    && dnf install -y yum-utils \
+    && dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo \
+    && dnf -y install docker-ce-cli
+
 # jdk-corretto 11
 ARG version=11.0.17.8-1
 
@@ -40,27 +67,6 @@ ENV JAVA_HOME=/usr/lib/jvm/java-11-amazon-corretto
 # VOLUME /home/gradle/.gradle
 
 # WORKDIR /home/gradle
-
-RUN set -o errexit -o nounset \
-    && yum update --nogpgcheck -y \
-    && yum install -y \
-    wget \
-    vim \
-    unzip
-    # \
-    # bzr \
-    # git \
-    # git-lfs \
-    # mercurial \
-    # openssh-client \
-    # subversion \
-    # \
-    # && echo "Testing VCSes" \
-    # && which bzr \
-    # && which git \
-    # && which git-lfs \
-    # && which hg \
-    # && which svn
 
 # ENV GRADLE_VERSION=7.6
 

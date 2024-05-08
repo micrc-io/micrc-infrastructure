@@ -1,0 +1,74 @@
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: jenkins-dind-autoscaling
+  namespace: kubesphere-devops-worker
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: jenkins-dind
+  minReplicas: 1
+  maxReplicas: 10
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jenkins-dind
+  namespace: kubesphere-devops-worker
+  labels:
+    app.kubernetes.io/name: jenkins-dind
+    app.kubernetes.io/instance: jenkins-dind
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: jenkins-dind
+      app.kubernetes.io/instance: jenkins-dind
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: jenkins-dind
+        app.kubernetes.io/instance: jenkins-dind
+    spec:
+      containers:
+      - name: jenkins-dind
+        image: docker:24-dind
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 2375
+          name: jenkins-dind
+        env:
+        - name: DOCKER_HOST
+          value: tcp://localhost:2375
+        - name: DOCKER_TLS_CERTDIR
+          value: ''
+        securityContext:
+          privileged: true
+        resources:
+          requests:
+            cpu: '500m'
+            memory: '2Gi'
+          limits:
+            cpu: '2000m'
+            memory: '4Gi'
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jenkins-dind
+  namespace: kubesphere-devops-worker
+spec:
+  selector:
+    app.kubernetes.io/name: jenkins-dind
+    app.kubernetes.io/instance: jenkins-dind
+  type: ClusterIP
+  ports:
+  - port: 2375
+    targetPort: 2375
+    protocol: TCP
+    name: http

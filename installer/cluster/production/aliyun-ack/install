@@ -11,16 +11,16 @@
 #   5.2 节点配置: 节点池名称cluster-manage-minimal，价格由低到高选择磁盘兼容的所有节点规格(8x32)，节点数1个并添加一个200G的数据盘，操作系统默认并使用已有密钥对。添加节点标签<组织域名>/cluster-manage: minimal，自定义节点名称cluster-worker- -cluster-manage-minimal
 #   5.3 组件配置: 不安装Ingress，不创建NAS文件系统，不启用监控，日志和控制平面组件日志。组件增加ACK-Virtual-Node，ack-kruise，配置Cloud Controller Manager的routeTableIDs为VPC的主、附加交换机路由表ID
 # 6. 集群创建的安全组规则，为workbench网段(100.104.0.0/16)开放22端口。配置启动集群自动弹性伸缩，弹性灵敏度15s。连接信息中将集群凭证复制到IT ECS服务器的~/.kube/config文件中
-# 7. 在ECS IT服务器中执行命令部署所有workloadspread，在集群控制台修改eci-profile configmap中的selector内容，添加security-inspector-polaris-cronjob、devops(修改label添加task: devops)、opensearch-logging-curator-opensearch-curator(修改label添加task: opensearch-logging-curator)定时任务的pod在eci中执行
+# 7. 在ECS IT服务器中执行命令部署所有workloadspread，在集群控制台修改eci-profile configmap中的selector内容，添加devops(修改label添加task: devops)、opensearch-logging-curator-opensearch-curator(修改label添加task: opensearch-logging-curator)定时任务的pod在eci中执行
 # 8. 在集群控制台，手工删除部署在同一个节点的多个pod(比如一个deploy两个pod，都运行在minimal节点上，把他们删了，让workloadspread重新调度)。新建节点池cluster-manage-elastic，规格4x16，其他与上述minimal节点池创建一致。额外开启弹性伸缩，抢占式实例，实例数量0-10
 # 9. 在集群控制台，存储中，创建集群基于NAS的CNFS，名为cnfs-nas-filesystem。删除自动创建storageclass，使用自定义yaml创建对应的storageclass并设为默认
 # 10. 在ECS IT服务器中执行命令安装istio-operator，cert-manager(修改nameserver为阿里云私网dns 100.100.2.136/138)，sealed-secret(helm)(包括kubeseal命令行)和reflector(helm)，分别用于管理istio-gateway，证书签发，secret加密和复制。参考integration环境的bare-metal安装脚本install-kubesphere
-# 11. 在ECS IT服务器中执行命令，使用cert-manager签发cluster.prod.it.ouxxa.com的证书，并使用reflector复制到kubesphere-system下，用于ks-console的域名
+# 11. 在ECS IT服务器中执行命令，使用cert-manager签发cluster.prod.it.ouxxa.com的证书，并使用reflector复制到kubesphere-system下，用于ks-console的域名；安装jenkins-dind
 # 12. 在ECS IT服务器中安装kubesphere
-#   12.1 在ECS IT服务器中下载kubesphere-installer.yaml，cluster-configuration.yaml文件(参考官方文档，在ack中安装kubesphere)。修改ks-installer镜像为3.4.1-patch.0避免devops s2i证书问题。修改启用alerting，auditing，devops，events，logging，metrics_server，servicemesh(不包括ingressGateway组件)
+#   12.1 在ECS IT服务器中下载kubesphere-installer.yaml，cluster-configuration.yaml文件(参考官方文档，在ack中安装kubesphere)。修改ks-installer镜像为3.4.1-patch.0避免devops s2i证书问题。修改启用alerting，auditing，devops，events，logging，metrics_server，servicemesh(启用cni，不包括ingressGateway组件)
 #   12.2 依次执行kubectl apply -f 两个文件执行安装。执行kubectl logs -n kubesphere-system $(kubectl get pod -n kubesphere-system -l 'app in (ks-install, ks-installer)' -o jsonpath='{.items[0].metadata.name}') -f查看安装进度
-#   12.4 安装完成后修改node-exporter daemonset，和fluentbit自定义资源(logging.kubesphere.io/FluentBit)，配置节点亲和，增加一个matchExpression，key为type，operator为DoesNotExist，用于排除在虚拟节点运行
-#   12.5 为kubesphere设置系统级别的namespace，避免在ui中展示，并禁用istio注入。参考integration环境的bare-metal安装脚本install-kubesphere，追加kruise-system，kruise-daemon-config两个namespace。为kubesphere-devops-worker配置alibabacloud.com/eci=true标签，使运行在这个namespace里的ci任务运行在eci节点上
+#   12.4 安装完成后修改istio-cni-node / node-exporter daemonset，和fluentbit自定义资源(logging.kubesphere.io/FluentBit)，配置节点亲和，增加一个matchExpression，key为type，operator为DoesNotExist，用于排除在虚拟节点运行
+#   12.5 为kubesphere设置系统级别的namespace，避免在ui中展示，并禁用istio注入。参考integration环境的bare-metal安装脚本install-kubesphere，追加kruise-system，kruise-daemon-config两个namespace。在eci-profile中添加jenkins-ci-micrc，label为jenkins:slave和jenkins/label:micrc，使ci pod在eci中执行(其tcp连接jenkins-dind使用docker daemon)
 #   12.7 参考integration环境的bare-metal安装脚本修改jenkins配置以使用自定义镜像(注意国外可用区不必设置代理访问github)
 #   12.9 在集群控制台(或者在ECS IT服务器使用命令)将ks-console的service修改为ClusterIP，并创建istio operator、gateway和virtualservice，配置cluster.prod.it.ouxxa.com私网dns解析
 #   12.8 如果argocd出现cert-manager Certificate duration和renewBefore不识别导致out of sync问题，参考integration环境的bare-metal安装脚本解决

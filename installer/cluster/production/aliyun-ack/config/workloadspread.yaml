@@ -1979,3 +1979,36 @@ spec:
             operator: In
             values:
               - elastic
+
+# kubesphere-devops-worker
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubesphere-devops-worker
+  labels:
+    kubesphere.io/workspace: system-workspace
+    istio-injection: disabled
+
+---
+apiVersion: apps.kruise.io/v1alpha1
+kind: WorkloadSpread
+metadata:
+  name: workloadspread-jenkins-dind
+  namespace: kubesphere-devops-worker
+spec:
+  scheduleStrategy:
+    type: Fixed
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: jenkins-dind
+  subsets:
+    - name: subset-elastic
+      maxReplicas: 10
+      requiredNodeSelectorTerm:
+        matchExpressions:
+          - key: ouxxa.com/cluster-manage
+            operator: In
+            values:
+              - elastic
