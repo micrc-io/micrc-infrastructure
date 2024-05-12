@@ -5,21 +5,16 @@ RUN set -o errexit -o nounset \
     && yum install -y \
     wget \
     vim \
-    unzip
-    # \
-    # bzr \
-    # git \
+    unzip \
+    \
+    git
     # git-lfs \
     # mercurial \
     # openssh-client \
-    # subversion \
     # \
     # && echo "Testing VCSes" \
-    # && which bzr \
     # && which git \
     # && which git-lfs \
-    # && which hg \
-    # && which svn
 
 RUN set -o errexit -o nounset \
     && echo "install docker cli" \
